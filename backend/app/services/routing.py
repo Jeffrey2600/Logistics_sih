@@ -17,7 +17,7 @@ class RoutingError(Exception):
 
 def _summarise(graph: nx.DiGraph, path: list[tuple[str, str]], network: Network) -> dict:
     legs: list[dict] = []
-    distance = hours = money = delay = 0.0
+    distance = hours = money = delay = objective = 0.0
     peak_risk = 0.0
     transhipments = 0
 
@@ -27,6 +27,7 @@ def _summarise(graph: nx.DiGraph, path: list[tuple[str, str]], network: Network)
             continue
 
         cost = data["cost"]
+        objective += cost.generalised
         hours += cost.hours
         money += cost.cost_per_tonne
         delay += cost.expected_delay_hours
@@ -85,6 +86,9 @@ def _summarise(graph: nx.DiGraph, path: list[tuple[str, str]], network: Network)
             "total_hours": round(hours + delay, 2),
             "cost_per_tonne": round(money, 2),
             "peak_segment_risk": round(peak_risk, 4),
+            # The value actually minimised, exposed so alternatives can be
+            # ranked in the UI on the same basis the optimiser used.
+            "objective_score": round(objective, 4),
             "transhipments": transhipments,
             "mode_chain": mode_chain,
         },
