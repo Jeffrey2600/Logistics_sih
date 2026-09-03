@@ -1,0 +1,47 @@
+id,name,state,lat,lon,kind,population,has_market,has_coldstore
+GAU,Guwahati,Assam,26.1445,91.7362,city,1116267,1,1
+JGP,Jogighopa,Assam,26.2333,90.5667,iwt_terminal,15000,0,0
+PDU,Pandu,Assam,26.1833,91.7000,iwt_terminal,20000,0,1
+DBR,Dhubri,Assam,26.0207,89.9747,iwt_terminal,151000,1,0
+BNG,Bongaigaon,Assam,26.4831,90.5583,city,139650,1,0
+GLP,Goalpara,Assam,26.1667,90.6167,town,53430,1,0
+BPT,Barpeta,Assam,26.3220,91.0060,town,42441,1,0
+NLB,Nalbari,Assam,26.4445,91.4396,town,38442,1,0
+NGN,Nagaon,Assam,26.3464,92.6840,city,147231,1,1
+TZP,Tezpur,Assam,26.6338,92.8000,city,58851,1,0
+JRT,Jorhat,Assam,26.7509,94.2037,city,153889,1,1
+GLG,Golaghat,Assam,26.5100,93.9600,town,36568,1,0
+SVS,Sivasagar,Assam,26.9826,94.6425,town,53854,1,0
+DBG,Dibrugarh,Assam,27.4728,94.9120,city,154019,1,1
+TSK,Tinsukia,Assam,27.4922,95.3468,city,116218,1,0
+NLK,North Lakhimpur,Assam,27.2333,94.1000,town,60895,1,0
+LMD,Lumding,Assam,25.7500,93.1667,rail_head,25000,0,0
+HFL,Haflong,Assam,25.1667,93.0167,town,44002,0,0
+DPU,Diphu,Assam,25.8333,93.4333,town,56859,1,0
+SCR,Silchar,Assam,24.8333,92.7789,city,178865,1,1
+KRJ,Karimganj,Assam,24.8697,92.3592,town,56854,1,0
+BYR,Byrnihat,Meghalaya,26.0333,91.8667,logistics_hub,12000,0,1
+SHL,Shillong,Meghalaya,25.5788,91.8933,city,143229,1,1
+JWI,Jowai,Meghalaya,25.4500,92.2000,town,28430,1,0
+TUR,Tura,Meghalaya,25.5142,90.2026,town,74858,1,0
+DMP,Dimapur,Nagaland,25.9063,93.7276,city,122834,1,1
+KHM,Kohima,Nagaland,25.6751,94.1086,city,99039,1,0
+MKG,Mokokchung,Nagaland,26.3220,94.5150,town,35913,1,0
+WKH,Wokha,Nagaland,26.1000,94.2667,town,35004,0,0
+IMP,Imphal,Manipur,24.8170,93.9368,city,268243,1,1
+CCP,Churachandpur,Manipur,24.3333,93.6833,town,58118,1,0
+AZL,Aizawl,Mizoram,23.7271,92.7176,city,293416,1,1
+KLB,Kolasib,Mizoram,24.2237,92.6786,town,24329,1,0
+LGL,Lunglei,Mizoram,22.8879,92.7350,town,57011,1,0
+CHP,Champhai,Mizoram,23.4560,93.3290,town,29649,0,0
+AGT,Agartala,Tripura,23.8315,91.2868,city,400004,1,1
+UDP,Udaipur,Tripura,23.5333,91.4833,town,32758,1,0
+DMN,Dharmanagar,Tripura,24.3667,92.1667,town,38562,1,0
+ITN,Itanagar,Arunachal Pradesh,27.0844,93.6053,city,59490,1,1
+NHL,Naharlagun,Arunachal Pradesh,27.1044,93.6953,town,37000,0,0
+ZRO,Ziro,Arunachal Pradesh,27.6333,93.8333,town,13905,0,0
+PSG,Pasighat,Arunachal Pradesh,28.0667,95.3333,town,24656,1,0
+NMS,Namsai,Arunachal Pradesh,27.6667,95.8667,town,18000,0,0
+TWG,Tawang,Arunachal Pradesh,27.5859,91.8594,town,11202,0,0
+GTK,Gangtok,Sikkim,27.3389,88.6065,city,100286,1,1
+SLG,Siliguri,West Bengal,26.7271,88.3953,gateway,509709,1,1

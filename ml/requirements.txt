@@ -1,0 +1,4 @@
+# Only needed to train the learned risk model; the API runs without these.
+scikit-learn==1.6.0
+joblib==1.4.2
+numpy==2.2.1

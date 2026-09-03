@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+node_modules/
+dist/
+.DS_Store
+data/raw/
+data/processed/*
+!data/processed/.gitkeep
+ml/landslide/model.joblib
+ml/landslide/model_meta.json
+.pytest_cache/
