@@ -12,3 +12,5 @@ data/processed/*
 ml/landslide/model.joblib
 ml/landslide/model_meta.json
 .pytest_cache/
+shots/
+package-lock.json

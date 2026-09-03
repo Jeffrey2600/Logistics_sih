@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NER Logistics &amp; Accessibility Intelligence</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="sidebar">
+  <header>
+    <h1>NER Logistics &amp; Accessibility Intelligence</h1>
+    <p>SIH26002 &middot; MDoNER &middot; multimodal routing with monsoon risk priced in</p>
+  </header>
+  <nav>
+    <button data-tab="route" class="active">Route</button>
+    <button data-tab="risk">Risk map</button>
+    <button data-tab="access">Accessibility</button>
+    <button data-tab="siting">Siting</button>
+  </nav>
+
+  <section class="panel" id="tab-route">
+    <h2>Consignment</h2>
+    <div class="row">
+      <div><label for="origin">Origin</label><select id="origin"></select></div>
+      <div><label for="destination">Destination</label><select id="destination"></select></div>
+    </div>
+    <label for="month">Month of despatch</label>
+    <select id="month"></select>
+    <label>Modes permitted</label>
+    <div class="chips" id="modeChips"></div>
+    <label for="vot">Value of time &mdash; <span id="votLabel">₹25</span>/tonne/hour</label>
+    <input type="range" id="vot" min="0" max="2000" step="25" value="25">
+    <p class="note">Raise it for perishables: spoilage makes delay expensive, and the optimiser starts paying for speed.</p>
+    <label>Objective weights</label>
+    <div class="row">
+      <div><label for="wCost" style="margin-top:0">Cost <span id="wCostL">0.4</span></label>
+           <input type="range" id="wCost" min="0" max="1" step="0.05" value="0.4"></div>
+      <div><label for="wTime" style="margin-top:0">Time <span id="wTimeL">0.4</span></label>
+           <input type="range" id="wTime" min="0" max="1" step="0.05" value="0.4"></div>
+    </div>
+    <label for="wRisk" style="margin-top:8px">Risk aversion <span id="wRiskL">0.2</span></label>
+    <input type="range" id="wRisk" min="0" max="1" step="0.05" value="0.2">
+    <label>Simulate closures</label>
+    <select id="closure"><option value="">No closures</option></select>
+    <button class="primary" id="planBtn">Plan route</button>
+    <div id="routeResult"></div>
+  </section>
+
+  <section class="panel" id="tab-risk" hidden>
+    <h2>Segment disruption risk</h2>
+    <label for="riskMonth">Month</label>
+    <select id="riskMonth"></select>
+    <label>Mode</label>
+    <div class="chips" id="riskModeChips"></div>
+    <div id="riskResult"></div>
+  </section>
+
+  <section class="panel" id="tab-access" hidden>
+    <h2>Accessibility index</h2>
+    <p class="note">Door-to-facility travel hours over the real network, not straight-line distance, with the monsoon priced in.</p>
+    <label for="accessMonth">Month</label>
+    <select id="accessMonth"></select>
+    <label for="accessMetric">Colour places by</label>
+    <select id="accessMetric">
+      <option value="accessibility_score">Overall accessibility score</option>
+      <option value="hours_to_market">Hours to nearest market</option>
+      <option value="hours_to_coldstore">Hours to nearest cold store</option>
+      <option value="hours_to_gateway">Hours to nearest gateway</option>
+    </select>
+    <div id="accessResult"></div>
+  </section>
+
+  <section class="panel" id="tab-siting" hidden>
+    <h2>Where should the next facility go?</h2>
+    <p class="note">Ranks candidate sites by the population they bring within reach, before anything is built.</p>
+    <label for="facilityType">Facility type</label>
+    <select id="facilityType">
+      <option value="coldstore">Cold store</option>
+      <option value="market">Market / mandi</option>
+    </select>
+    <label for="threshold">Within <span id="thresholdL">10</span> hours</label>
+    <input type="range" id="threshold" min="2" max="24" step="1" value="10">
+    <label>Candidate sites <span class="note" id="candCount"></span></label>
+    <div class="chips" id="candidateChips"></div>
+    <button class="primary" id="siteBtn">Evaluate sites</button>
+    <div id="sitingResult"></div>
+  </section>
+</div>
+
+<div style="position:relative">
+  <div id="map"></div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

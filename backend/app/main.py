@@ -6,9 +6,11 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .api.deps import get_network, get_risk_model
 from .api.routes import accessibility, network, routing
+from .config import BASE_DIR
 
 app = FastAPI(
     title="NER Logistics & Accessibility Intelligence",
@@ -42,3 +44,11 @@ def health():
         "segments": len(net.edges),
         "risk_model": get_risk_model().name,
     }
+
+
+# The dashboard is static files with no build step, served from the same
+# process as the API. One free-tier service, one origin, no CORS in practice.
+# Mounted last so it never shadows an API route.
+FRONTEND_DIR = BASE_DIR / "frontend"
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="dashboard")

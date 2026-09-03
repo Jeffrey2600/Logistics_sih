@@ -1,0 +1,12 @@
+{
+  "name": "ner-logistics-dashboard",
+  "private": true,
+  "description": "Tooling for the SIH26002 dashboard. The dashboard itself has no build step and no runtime npm dependency: MapLibre is vendored into frontend/vendor/ so the demo survives a venue with no internet.",
+  "scripts": {
+    "vendor": "cp node_modules/maplibre-gl/dist/maplibre-gl.js node_modules/maplibre-gl/dist/maplibre-gl.css frontend/vendor/"
+  },
+  "devDependencies": {
+    "maplibre-gl": "4.7.1",
+    "playwright": "^1.49.0"
+  }
+}
