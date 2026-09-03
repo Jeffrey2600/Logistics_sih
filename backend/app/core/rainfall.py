@@ -16,14 +16,17 @@ from ..config import PROCESSED_DIR, SEASON_RAIN_INDEX
 
 RAINFALL_CSV = PROCESSED_DIR / "place_rainfall.csv"
 
+# Written by data/ingest/fetch_osm.py: the same indices carried onto the OSM
+# junctions, so expanding the network does not silently drop every new node
+# back to the regional average.
+OSM_RAINFALL_CSV = PROCESSED_DIR / "osm_rainfall.csv"
 
-@lru_cache(maxsize=1)
-def place_rain_index() -> dict[str, dict[str, float]]:
-    """{place_id: {month: 0-1 index}}, empty when the dataset is absent."""
-    if not RAINFALL_CSV.exists():
+
+def _read(path) -> dict[str, dict[str, float]]:
+    if not path.exists():
         return {}
     try:
-        with RAINFALL_CSV.open() as fh:
+        with path.open() as fh:
             return {
                 row["place_id"]: {
                     month: float(row[f"index_{month}"]) for month in SEASON_RAIN_INDEX
@@ -33,6 +36,15 @@ def place_rain_index() -> dict[str, dict[str, float]]:
     except (KeyError, ValueError):
         # A malformed file must degrade to the regional table, not crash the API.
         return {}
+
+
+@lru_cache(maxsize=1)
+def place_rain_index() -> dict[str, dict[str, float]]:
+    """{place_id: {month: 0-1 index}}, empty when no dataset is present.
+
+    Measured seed places override interpolated OSM junctions where both exist.
+    """
+    return {**_read(OSM_RAINFALL_CSV), **_read(RAINFALL_CSV)}
 
 
 def rain_index(edge: dict, month: str) -> float:

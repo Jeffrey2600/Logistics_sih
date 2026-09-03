@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 from dataclasses import dataclass, field
 from functools import lru_cache
+from pathlib import Path
 
 import networkx as nx
 
-from ..config import MODES, SEED_DIR
+from ..config import MODES, PROCESSED_DIR, SEED_DIR
 from .costing import leg_cost, transfer_cost
 from .risk import RiskModel
 
@@ -64,6 +66,35 @@ class Network:
     def edge_by_id(self, edge_id: str) -> dict | None:
         return next((e for e in self.edges if e["id"] == edge_id), None)
 
+    def components(self) -> list[set[str]]:
+        """Connected components over all modes, largest first.
+
+        A fragmented network is not a crash, it is worse: routing still returns
+        answers for the reachable pairs while every accessibility score for an
+        orphaned place is quietly wrong. It is reported at /health so a partial
+        OSM build is visible before anyone trusts a number from it.
+        """
+        adjacency: dict[str, set[str]] = {p: set() for p in self.places}
+        for edge in self.edges:
+            adjacency[edge["u"]].add(edge["v"])
+            adjacency[edge["v"]].add(edge["u"])
+
+        seen: set[str] = set()
+        found: list[set[str]] = []
+        for start in adjacency:
+            if start in seen:
+                continue
+            stack, component = [start], set()
+            while stack:
+                node = stack.pop()
+                if node in component:
+                    continue
+                component.add(node)
+                stack.extend(adjacency[node] - component)
+            seen |= component
+            found.append(component)
+        return sorted(found, key=len, reverse=True)
+
 
 def haversine_km(a: Place, b: Place) -> float:
     p1, p2 = math.radians(a.lat), math.radians(b.lat)
@@ -73,26 +104,36 @@ def haversine_km(a: Place, b: Place) -> float:
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(h))
 
 
-@lru_cache(maxsize=1)
-def load_network() -> Network:
-    """Read the seed CSVs once per process."""
+OSM_NODES = PROCESSED_DIR / "osm_nodes.csv"
+OSM_EDGES = PROCESSED_DIR / "osm_edges.csv"
+
+# Sensible defaults for attributes OSM does not carry. Landslide history comes
+# from the COOLR join when it has been run; monsoon exposure is a placeholder
+# that the per-place rainfall index largely supersedes anyway.
+OSM_DEFAULT_MONSOON_EXPOSURE = 0.45
+
+
+def _read_places(path: Path) -> dict[str, Place]:
     places: dict[str, Place] = {}
-    with (SEED_DIR / "nodes.csv").open() as fh:
+    with path.open() as fh:
         for row in csv.DictReader(fh):
             places[row["id"]] = Place(
                 id=row["id"],
                 name=row["name"],
-                state=row["state"],
+                state=row.get("state", ""),
                 lat=float(row["lat"]),
                 lon=float(row["lon"]),
-                kind=row["kind"],
-                population=int(row["population"]),
-                has_market=row["has_market"] == "1",
-                has_coldstore=row["has_coldstore"] == "1",
+                kind=row.get("kind", "junction"),
+                population=int(row.get("population") or 0),
+                has_market=str(row.get("has_market", "0")) == "1",
+                has_coldstore=str(row.get("has_coldstore", "0")) == "1",
             )
+    return places
 
+
+def _read_edges(path: Path, places: dict[str, Place], defaults: dict) -> list[dict]:
     edges: list[dict] = []
-    with (SEED_DIR / "edges.csv").open() as fh:
+    with path.open() as fh:
         for row in csv.DictReader(fh):
             if row["u"] not in places or row["v"] not in places:
                 raise ValueError(f"edge references unknown place: {row['u']}->{row['v']}")
@@ -106,11 +147,74 @@ def load_network() -> Network:
                     "terrain": row["terrain"],
                     "route_ref": row["route_ref"],
                     "lanes": int(row["lanes"]),
-                    "monsoon_exposure": float(row["monsoon_exposure"]),
-                    "landslide_events": int(row["landslide_events"]),
+                    "monsoon_exposure": float(
+                        row.get("monsoon_exposure") or defaults["monsoon_exposure"]
+                    ),
+                    "landslide_events": int(row.get("landslide_events") or 0),
                 }
             )
+    return edges
+
+
+def osm_network_available() -> bool:
+    return OSM_NODES.exists() and OSM_EDGES.exists()
+
+
+def use_osm() -> bool:
+    """OSM is opt-in.
+
+    The seed network is committed and known-good; the OSM build is neither, and
+    a partial anchoring would silently disconnect places rather than fail
+    loudly. Turning it on is therefore a deliberate act:
+
+        NER_USE_OSM=1 uvicorn backend.app.main:app
+    """
+    return os.environ.get("NER_USE_OSM", "").lower() in ("1", "true", "yes") and (
+        osm_network_available()
+    )
+
+
+def merge_osm(seed: Network, osm: Network) -> Network:
+    """Union the OSM road graph with the seed's rail, water and air links.
+
+    OSM ingestion produces roads only. Rail alignments, the NW-2 waterway and
+    air links stay from the seed network, and they connect because the seed
+    places they reference are anchored into the OSM graph during ingestion.
+
+    Seed *road* edges are dropped: keeping both would offer the optimiser two
+    parallel descriptions of the same highway, one coarse and one detailed, and
+    it would take whichever the assumptions happened to favour.
+
+    Every seed place is retained even when OSM ingestion did not anchor it. A
+    place the road graph missed may still be genuinely served by rail - Lumding
+    is exactly that - and dropping it would lose a real link. What it must not
+    do is disappear silently, which is why /health reports connectivity.
+    """
+    # Seed metadata wins: it carries population, markets and cold stores, which
+    # bare OSM junctions do not have.
+    places = {**osm.places, **seed.places}
+    edges = list(osm.edges) + [e for e in seed.edges if e["mode"] != "road"]
     return Network(places=places, edges=edges)
+
+
+@lru_cache(maxsize=1)
+def load_network() -> Network:
+    """The active network: seed by default, seed+OSM when NER_USE_OSM is set."""
+    seed = Network(
+        places=(seed_places := _read_places(SEED_DIR / "nodes.csv")),
+        edges=_read_edges(SEED_DIR / "edges.csv", seed_places,
+                          {"monsoon_exposure": 0.3}),
+    )
+    if not use_osm():
+        return seed
+
+    osm_places = _read_places(OSM_NODES)
+    osm = Network(
+        places=osm_places,
+        edges=_read_edges(OSM_EDGES, osm_places,
+                          {"monsoon_exposure": OSM_DEFAULT_MONSOON_EXPOSURE}),
+    )
+    return merge_osm(seed, osm)
 
 
 def build_graph(

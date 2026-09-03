@@ -86,7 +86,7 @@ places and 78 multimodal segments ships in `data/seed/`, and the rainfall
 climatology is committed. It runs offline, on a fresh clone, immediately.
 
 ```bash
-python -m pytest tests -q     # 69 tests
+python -m pytest tests -q     # 127 tests
 ```
 
 ## Deployment
@@ -106,14 +106,62 @@ every data layer still renders with no internet at all.
 | Seed network (46 places, 78 segments) | Hand-built from NH/NFR/NW-2 alignments | Committed |
 | Monthly rainfall climatology | NASA POWER (free, no key) | **Fetched and committed** |
 | Landslide occurrences | NASA COOLR / Global Landslide Catalog | Fetcher written, **not yet run** — host blocked from the build sandbox |
-| Road network at scale | OpenStreetMap via Overpass | Not yet built |
+| Road network at scale | OpenStreetMap via Overpass | Pipeline built and tested; download unverified — Overpass blocked from the build sandbox |
 
 ```bash
 python data/ingest/fetch_rainfall.py       # verified working
-python data/ingest/fetch_landslides.py     # written, unverified
+python data/ingest/fetch_landslides.py     # written, download unverified
+python data/ingest/fetch_osm.py            # written, download unverified
 python data/ingest/build_training_set.py
 python ml/landslide/train.py
 ```
+
+### OSM ingestion
+
+OSM is a drawing, not a graph. One national highway is hundreds of `way`
+objects, each with dozens of geometry nodes that exist only to trace a curve.
+The pipeline in `data/ingest/osm.py` parses the ways, decides which nodes are
+*interesting* (junctions, way endpoints, and the seed places), contracts every
+chain between them into a single edge carrying the real traced length, and
+infers the attributes the cost and risk models need.
+
+Two decisions carry most of the weight:
+
+- **Terrain from sinuosity.** Traced length over straight-line chord. A road
+  that wanders 40% further than the chord is climbing something. This needs no
+  elevation model, which matters because DEM APIs are rate-limited and often
+  unreachable. It is a proxy: a straight road across a high plateau reads as
+  plain.
+- **Merge radius, not nearest node.** OSM routinely carries several
+  coincident-but-distinct nodes where roads meet a town — separate
+  carriageways, untagged duplicates, ways that simply do not share an endpoint.
+  Anchoring only the nearest one leaves the rest as junctions metres away and
+  fragments the graph at exactly the places the model cares most about, so
+  everything within `--merge-km` collapses into the place.
+
+Because Overpass mirrors rate-limit hard and are often unreachable, the
+download is a thin isolated layer and everything else takes a saved response:
+
+```bash
+python data/ingest/fetch_osm.py --dry-run          # print the query
+python data/ingest/fetch_osm.py --from-file data/raw/osm_ner.json
+```
+
+One teammate downloads once; everyone else builds the network offline from the
+committed JSON.
+
+**Using the built network** is opt-in, because the seed network is committed and
+known-good while an OSM build is neither, and partial anchoring would silently
+disconnect places rather than fail loudly:
+
+```bash
+NER_USE_OSM=1 uvicorn backend.app.main:app
+```
+
+The merged network takes roads from OSM and keeps rail, the NW-2 waterway and
+air links from the seed. `/health` reports `network_source`, `connected`,
+`components` and `orphaned_places`, so a fragmented build is visible before
+anyone trusts a number from it.
 
 ## Honest limitations
 
@@ -136,10 +184,14 @@ These are real, and stating them is better than being asked about them.
    Every rate, speed and penalty lives in `backend/app/config.py` with a source
    note, so a surveyed number can replace an assumed one without touching the
    algorithms.
-4. **The seed network is coarse.** 46 towns, not 30,000 villages. The
-   accessibility index is computed correctly over whatever network it is given;
-   at village resolution it needs the OSM ingestion that is not yet built, and
-   the facility-siting results in particular will get much sharper.
+4. **The default network is coarse.** 46 towns, not 30,000 villages. The
+   accessibility index is computed correctly over whatever network it is given,
+   and the OSM pipeline that expands it is built and tested — but its download
+   has never run, so no large network has actually been built and profiled.
+   Expect the first real build to need tuning of the snap and merge radii, and
+   expect accessibility to slow down: it runs a multi-source Dijkstra per
+   facility class per month, which is fine over 46 nodes and will need caching
+   over 50,000.
 5. **Accessibility is scored at nodes, not over a population surface.** Proper
    spatial equity work would use a WorldPop raster and travel-time isochrones.
 
@@ -160,7 +212,12 @@ backend/app/
   api/routes/          HTTP layer
 frontend/              dashboard: no build step, MapLibre vendored
 data/seed/             the committed network
-data/ingest/           fetchers and the training-set builder
+data/ingest/
+  osm.py               OSM topology: parsing, contraction, classification
+  fetch_osm.py         Overpass CLI, with an offline --from-file path
+  fetch_rainfall.py    NASA POWER climatology
+  fetch_landslides.py  NASA COOLR, snapped to segments
+  build_training_set.py
 ml/landslide/          model training
-tests/                 69 tests
+tests/                 127 tests
 ```

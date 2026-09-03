@@ -1,0 +1,395 @@
+"""OSM ingestion logic.
+
+The Overpass download itself needs the internet; every transformation it feeds
+does not. These tests drive the whole pipeline on a synthetic payload shaped
+like a real `out body geom` response, over real NER coordinates.
+"""
+import math
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "data" / "ingest"))
+
+from common import haversine_km  # noqa: E402
+from osm import (  # noqa: E402
+    build_network, classify_terrain, degree_histogram, find_interesting_nodes,
+    lanes_from_tags, largest_component, parse_overpass, route_ref_from_tags,
+    snap_anchors, split_into_chains,
+)
+
+# Real coordinates, so distances and sinuosity are physically meaningful.
+GAU = (26.1445, 91.7362)   # Guwahati
+BYR = (26.0333, 91.8667)   # Byrnihat
+SHL = (25.5788, 91.8933)   # Shillong
+NGN = (26.3464, 92.6840)   # Nagaon
+
+
+def densify(a, b, count, wiggle=0.0):
+    """Interpolate `count` points from a to b, optionally made to wander.
+
+    `wiggle` displaces intermediate points perpendicular to the chord, which is
+    what a hill road does and what the sinuosity terrain proxy keys on.
+    """
+    points = []
+    for i in range(count + 1):
+        t = i / count
+        lat = a[0] + (b[0] - a[0]) * t
+        lon = a[1] + (b[1] - a[1]) * t
+        if wiggle and 0 < i < count:
+            offset = math.sin(t * math.pi * 6) * wiggle
+            lat += offset
+            lon += offset * 0.6
+        points.append((round(lat, 6), round(lon, 6)))
+    return points
+
+
+def way(way_id, tags, points, node_ids=None):
+    """One element in the shape Overpass returns for `out body geom`."""
+    ids = node_ids or [way_id * 1000 + i for i in range(len(points))]
+    assert len(ids) == len(points)
+    return {
+        "type": "way",
+        "id": way_id,
+        "tags": tags,
+        "nodes": ids,
+        "geometry": [{"lat": lat, "lon": lon} for lat, lon in points],
+    }
+
+
+# Byrnihat is the junction where the two NH-6 ways meet: the same OSM node id
+# must appear as the last node of one way and the first node of the next.
+BYR_NODE = 2_999
+
+NH6_NORTH = densify(GAU, BYR, 20)
+NH6_SOUTH = densify(BYR, SHL, 40, wiggle=0.045)   # the Shillong climb
+NH27 = densify(GAU, NGN, 30)
+
+
+@pytest.fixture
+def payload():
+    return {
+        "elements": [
+            way(1, {"highway": "trunk", "ref": "NH-27", "lanes": "4"}, NH27),
+            way(2, {"highway": "trunk", "ref": "NH-6", "lanes": "4"}, NH6_NORTH,
+                node_ids=[2000 + i for i in range(len(NH6_NORTH) - 1)] + [BYR_NODE]),
+            way(3, {"highway": "trunk", "ref": "NH-6", "lanes": "2"}, NH6_SOUTH,
+                node_ids=[BYR_NODE] + [3000 + i for i in range(1, len(NH6_SOUTH))]),
+            # Same corridor as way 1, mapped as the other carriageway.
+            way(4, {"highway": "trunk", "ref": "NH-27"}, densify(GAU, NGN, 25, wiggle=0.004),
+                node_ids=[4000] + [4000 + i for i in range(1, 25)] + [1030]),
+            way(5, {"highway": "residential"}, densify(GAU, (26.15, 91.75), 4)),
+            way(6, {"highway": "primary"}, densify(SHL, (25.58, 91.90), 3)),  # short spur
+            {"type": "node", "id": 99, "lat": 26.0, "lon": 92.0},
+            {"type": "way", "id": 7, "tags": {"highway": "trunk"}},          # no geometry
+            way(8, {"highway": "trunk"}, densify(GAU, NGN, 5))               # ids mismatched below
+            | {"nodes": [1, 2]},
+        ]
+    }
+
+
+@pytest.fixture
+def places():
+    return {
+        "GAU": {"id": "GAU", "name": "Guwahati", "state": "Assam", "lat": "26.1445",
+                "lon": "91.7362", "kind": "city", "population": "1116267",
+                "has_market": "1", "has_coldstore": "1"},
+        "SHL": {"id": "SHL", "name": "Shillong", "state": "Meghalaya", "lat": "25.5788",
+                "lon": "91.8933", "kind": "city", "population": "143229",
+                "has_market": "1", "has_coldstore": "1"},
+        "BYR": {"id": "BYR", "name": "Byrnihat", "state": "Meghalaya", "lat": "26.0333",
+                "lon": "91.8667", "kind": "logistics_hub", "population": "12000",
+                "has_market": "0", "has_coldstore": "1"},
+        # Far outside the fixture's geometry: must not anchor onto anything.
+        "AZL": {"id": "AZL", "name": "Aizawl", "state": "Mizoram", "lat": "23.7271",
+                "lon": "92.7176", "kind": "city", "population": "293416",
+                "has_market": "1", "has_coldstore": "1"},
+    }
+
+
+# ------------------------------------------------------------------ parsing --
+
+def test_parse_keeps_only_well_formed_ways(payload):
+    ways = parse_overpass(payload)
+    ids = {w.id for w in ways}
+    assert 7 not in ids, "way with no geometry must be skipped"
+    assert 8 not in ids, "way whose node count disagrees with its geometry must be skipped"
+    assert 99 not in ids, "nodes are not ways"
+    assert {1, 2, 3, 4, 5, 6} <= ids
+
+
+def test_parse_is_empty_for_an_empty_response():
+    assert parse_overpass({}) == []
+    assert parse_overpass({"elements": []}) == []
+
+
+def test_geometry_is_read_as_lat_lon_pairs(payload):
+    first = next(w for w in parse_overpass(payload) if w.id == 1)
+    assert first.geometry[0] == pytest.approx(GAU, abs=1e-4)
+    assert len(first.geometry) == len(first.node_ids)
+
+
+# ----------------------------------------------------------------- topology --
+
+def test_shared_node_is_a_junction(payload):
+    ways = [w for w in parse_overpass(payload) if w.id in (2, 3)]
+    assert BYR_NODE in find_interesting_nodes(ways, set())
+
+
+def test_way_endpoints_are_always_interesting(payload):
+    ways = [w for w in parse_overpass(payload) if w.id == 1]
+    interesting = find_interesting_nodes(ways, set())
+    assert ways[0].node_ids[0] in interesting
+    assert ways[0].node_ids[-1] in interesting
+
+
+def test_a_node_repeated_within_one_way_is_not_a_junction():
+    """A way that touches its own node twice is a loop, not a crossing."""
+    points = densify(GAU, BYR, 4)
+    looped = way(11, {"highway": "trunk"}, points + [points[0]],
+                 node_ids=[11000 + i for i in range(len(points))] + [11000])
+    ways = parse_overpass({"elements": [looped]})
+    interesting = find_interesting_nodes(ways, set())
+    # 11000 is an endpoint so it is interesting, but only because of that -
+    # the interior nodes it shares with nothing must not be.
+    assert 11002 not in interesting
+
+
+def test_anchors_become_interesting(payload):
+    ways = [w for w in parse_overpass(payload) if w.id == 1]
+    mid = ways[0].node_ids[15]
+    assert mid not in find_interesting_nodes(ways, set())
+    assert mid in find_interesting_nodes(ways, {mid})
+
+
+def test_chains_are_contracted_between_interesting_nodes(payload):
+    """The core win: 30 geometry nodes must become one edge, not 30."""
+    ways = [w for w in parse_overpass(payload) if w.id == 1]
+    chains = split_into_chains(ways, find_interesting_nodes(ways, set()))
+    assert len(chains) == 1
+    assert len(chains[0].geometry) == len(ways[0].geometry)
+
+
+def test_a_way_is_split_at_an_interior_junction(payload):
+    ways = [w for w in parse_overpass(payload) if w.id == 1]
+    mid = ways[0].node_ids[15]
+    chains = split_into_chains(ways, find_interesting_nodes(ways, {mid}))
+    assert len(chains) == 2
+    assert chains[0].end == mid and chains[1].start == mid
+
+
+def test_traced_length_exceeds_the_chord_on_a_winding_road(payload):
+    winding = next(w for w in parse_overpass(payload) if w.id == 3)
+    chain = split_into_chains([winding], {winding.node_ids[0], winding.node_ids[-1]})[0]
+    assert chain.traced_length_km() > chain.chord_km() * 1.3
+
+
+def test_traced_length_matches_the_chord_on_a_straight_road(payload):
+    straight = next(w for w in parse_overpass(payload) if w.id == 1)
+    chain = split_into_chains([straight], {straight.node_ids[0], straight.node_ids[-1]})[0]
+    assert chain.traced_length_km() == pytest.approx(chain.chord_km(), rel=0.01)
+
+
+# --------------------------------------------------------------- attributes --
+
+@pytest.mark.parametrize("length,chord,expected", [
+    (100.0, 99.0, "plain"),
+    (100.0, 85.0, "hilly"),
+    (100.0, 60.0, "mountain"),
+    (2.0, 0.5, "plain"),      # too short for sinuosity to mean anything
+    (100.0, 0.0, "plain"),    # degenerate chord must not divide by zero
+])
+def test_terrain_from_sinuosity(length, chord, expected):
+    assert classify_terrain(length, chord) == expected
+
+
+@pytest.mark.parametrize("tags,expected", [
+    ({"lanes": "4", "highway": "trunk"}, 4),
+    ({"lanes": " 2 ", "highway": "trunk"}, 2),
+    ({"lanes": "2;3", "highway": "trunk"}, 2),
+    ({"lanes": "banana", "highway": "trunk"}, 2),
+    ({"lanes": "99", "highway": "motorway"}, 4),   # out of range, use the class
+    ({"highway": "tertiary"}, 1),
+    ({"highway": "motorway"}, 4),
+    ({}, 2),
+])
+def test_lanes_from_tags(tags, expected):
+    assert lanes_from_tags(tags) == expected
+
+
+@pytest.mark.parametrize("tags,expected", [
+    ({"ref": "NH-27"}, "NH-27"),
+    ({"ref": "NH-6;NH-206"}, "NH-6"),
+    ({"nat_ref": "NH-2"}, "NH-2"),
+    ({"highway": "primary"}, "primary"),
+    ({}, "road"),
+])
+def test_route_ref_from_tags(tags, expected):
+    assert route_ref_from_tags(tags) == expected
+
+
+# ------------------------------------------------------------------ anchors --
+
+def test_seed_places_anchor_onto_nearby_nodes(payload, places):
+    ways = parse_overpass(payload)
+    anchored = snap_anchors(ways, places)
+    assert set(anchored.values()) >= {"GAU", "SHL", "BYR"}
+
+
+def test_distant_places_do_not_anchor(payload, places):
+    """Aizawl is 200 km from anything in this payload and must stay unanchored."""
+    anchored = snap_anchors(parse_overpass(payload), places)
+    assert "AZL" not in anchored.values()
+
+
+def test_every_node_at_a_place_is_merged_into_it(payload, places):
+    """OSM carries several coincident nodes where roads meet a town. Anchoring
+    only the nearest leaves the rest as junctions metres away, splitting the
+    corridor. All of them within the merge radius must collapse into the place."""
+    ways = parse_overpass(payload)
+    coords = {n: p for w in ways for n, p in zip(w.node_ids, w.geometry)}
+    anchored = snap_anchors(ways, places, merge_radius_km=2.0)
+
+    at_guwahati = [n for n, place in anchored.items() if place == "GAU"]
+    assert len(at_guwahati) >= 2, "coincident nodes at Guwahati were not merged"
+    assert all(
+        haversine_km(*coords[node_id], GAU[0], GAU[1]) <= 2.0
+        for node_id in at_guwahati
+    )
+
+
+def test_a_contested_node_goes_to_the_nearer_place(payload, places):
+    """Merge radii can overlap; a node must belong to exactly one place."""
+    ways = parse_overpass(payload)
+    coords = {n: p for w in ways for n, p in zip(w.node_ids, w.geometry)}
+    anchored = snap_anchors(ways, places, merge_radius_km=25.0)
+    for node_id, place_id in anchored.items():
+        distances = {
+            pid: haversine_km(*coords[node_id], float(p["lat"]), float(p["lon"]))
+            for pid, p in places.items()
+        }
+        assert place_id == min(distances, key=distances.get)
+
+
+def test_a_place_off_the_highway_still_anchors_to_its_nearest_node(payload, places):
+    """With nothing inside the merge radius, fall back to the single nearest."""
+    ways = parse_overpass(payload)
+    coords = {n: p for w in ways for n, p in zip(w.node_ids, w.geometry)}
+    anchored = snap_anchors(ways, places, radius_km=12.0, merge_radius_km=0.0001)
+
+    node_id = next(n for n, place in anchored.items() if place == "SHL")
+    chosen = haversine_km(*coords[node_id], SHL[0], SHL[1])
+    assert all(
+        chosen <= haversine_km(*point, SHL[0], SHL[1]) + 1e-9
+        for point in coords.values()
+    )
+
+
+def test_tight_radii_admit_only_coincident_nodes(payload, places):
+    """Shrink both radii and only nodes sitting on the place itself survive."""
+    ways = parse_overpass(payload)
+    coords = {n: p for w in ways for n, p in zip(w.node_ids, w.geometry)}
+    anchored = snap_anchors(ways, places, radius_km=0.05, merge_radius_km=0.05)
+
+    assert "AZL" not in anchored.values(), "Aizawl is 200 km from this payload"
+    for node_id, place_id in anchored.items():
+        place = places[place_id]
+        distance = haversine_km(*coords[node_id], float(place["lat"]), float(place["lon"]))
+        assert distance <= 0.05
+
+
+# ------------------------------------------------------------ full pipeline --
+
+def test_network_builds(payload, places):
+    network = build_network(payload, places)
+    assert network.nodes and network.edges
+
+
+def test_non_freight_classes_are_excluded(payload, places):
+    network = build_network(payload, places)
+    assert all(edge["highway"] != "residential" for edge in network.edges)
+
+
+def test_short_chains_are_dropped(payload, places):
+    """The Shillong spur is under half a kilometre and is not a freight link."""
+    network = build_network(payload, places, min_edge_km=0.5)
+    assert all(edge["distance_km"] >= 0.5 for edge in network.edges)
+
+
+def test_anchored_places_are_named_by_their_seed_id(payload, places):
+    network = build_network(payload, places)
+    assert "GAU" in network.nodes
+    assert network.nodes["GAU"]["name"] == "Guwahati"
+    assert network.nodes["GAU"]["population"] == 1116267
+
+
+def test_unanchored_junctions_get_synthetic_ids(payload, places):
+    network = build_network(payload, places)
+    synthetic = [n for n in network.nodes if n.startswith("n")]
+    assert synthetic
+    assert all(network.nodes[n]["kind"] == "junction" for n in synthetic)
+
+
+def test_dual_carriageway_collapses_to_one_edge(payload, places):
+    """Ways 1 and 4 are the same corridor. Two edges would invent a choice."""
+    network = build_network(payload, places)
+    pairs = [(edge["u"], edge["v"]) for edge in network.edges]
+    assert len(pairs) == len(set(pairs)), "parallel edges between the same pair"
+
+
+def test_no_self_loops(payload, places):
+    assert all(edge["u"] != edge["v"] for edge in build_network(payload, places).edges)
+
+
+def test_edges_carry_everything_the_cost_model_needs(payload, places):
+    required = {"u", "v", "mode", "distance_km", "terrain", "route_ref", "lanes"}
+    for edge in build_network(payload, places).edges:
+        assert required <= set(edge)
+        assert edge["mode"] == "road"
+        assert edge["distance_km"] > 0
+        assert edge["terrain"] in ("plain", "hilly", "mountain")
+
+
+def test_the_shillong_climb_is_classified_as_hill_terrain(payload, places):
+    """A real check on the proxy: NH-6 up to Shillong is not flat."""
+    network = build_network(payload, places)
+    climb = [e for e in network.edges
+             if {e["u"], e["v"]} == {"BYR", "SHL"}]
+    assert climb, "expected a Byrnihat-Shillong edge"
+    assert climb[0]["terrain"] in ("hilly", "mountain")
+
+
+def test_the_plains_corridor_is_not_classified_as_mountain(payload, places):
+    network = build_network(payload, places)
+    plains = [e for e in network.edges if e["route_ref"] == "NH-27"]
+    assert plains
+    assert all(edge["terrain"] == "plain" for edge in plains)
+
+
+def test_junction_joins_the_two_nh6_ways(payload, places):
+    """Byrnihat is the shared node; without it the corridor is two graphs."""
+    network = build_network(payload, places)
+    assert len(largest_component(network)) >= 3
+    neighbours = {
+        edge["v"] if edge["u"] == "BYR" else edge["u"]
+        for edge in network.edges if "BYR" in (edge["u"], edge["v"])
+    }
+    assert {"GAU", "SHL"} <= neighbours
+
+
+def test_empty_payload_yields_an_empty_network(places):
+    network = build_network({"elements": []}, places)
+    assert network.nodes == {} and network.edges == []
+
+
+def test_degree_histogram_counts_every_endpoint(payload, places):
+    network = build_network(payload, places)
+    histogram = degree_histogram(network)
+    assert sum(histogram.values()) == len(network.nodes)
+    assert sum(degree * count for degree, count in histogram.items()) == 2 * len(network.edges)
+
+
+def test_largest_component_is_a_subset_of_the_nodes(payload, places):
+    network = build_network(payload, places)
+    assert largest_component(network) <= set(network.nodes)
