@@ -18,7 +18,8 @@ import math
 from dataclasses import dataclass
 from typing import Protocol
 
-from ..config import EXPECTED_CLOSURE_HOURS, MODEL_DIR, SEASON_RAIN_INDEX
+from ..config import EXPECTED_CLOSURE_HOURS, MODEL_DIR
+from .rainfall import rain_index
 
 TERRAIN_BASE = {
     "plain": 0.02,
@@ -72,10 +73,6 @@ def _band(p: float) -> str:
     return "severe"
 
 
-def _rain_index(month: str) -> float:
-    return SEASON_RAIN_INDEX.get(month.lower()[:3], 0.5)
-
-
 class RiskModel(Protocol):
     name: str
 
@@ -89,7 +86,7 @@ class AnalyticRiskModel:
 
     def assess(self, edge: dict, month: str) -> RiskAssessment:
         terrain = edge.get("terrain", "plain")
-        rain = _rain_index(month)
+        rain = rain_index(edge, month)
 
         base = TERRAIN_BASE.get(terrain, 0.05)
 

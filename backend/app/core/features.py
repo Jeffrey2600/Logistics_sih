@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 
-from ..config import SEASON_RAIN_INDEX
+from .rainfall import rain_index
 
 TERRAIN_ORDINAL = {"plain": 0, "riverine": 1, "hilly": 2, "mountain": 3, "aerial": 0}
 MODE_ORDINAL = {"road": 0, "rail": 1, "water": 2, "air": 3}
@@ -30,7 +30,7 @@ def edge_features(edge: dict, month: str) -> dict[str, float]:
     length = max(float(edge.get("distance_km", 1.0)), 1.0)
     density = float(edge.get("landslide_events", 0)) * 100.0 / length
     history = 1.0 - math.exp(-density / 6.0)
-    rain = SEASON_RAIN_INDEX.get(month.lower()[:3], 0.5)
+    rain = rain_index(edge, month)
     terrain_ord = TERRAIN_ORDINAL.get(terrain, 0)
 
     return {
