@@ -13,7 +13,7 @@ import math
 import networkx as nx
 
 from ..config import DRY_SEASON, MODES, PEAK_MONSOON
-from ..core.network import Network, cached_graph
+from ..core.network import JUNCTION_KIND, Network, cached_graph
 from ..core.risk import RiskModel
 
 # Half-life style decay constants, in hours. A facility 3h away scores well for
@@ -126,10 +126,11 @@ def accessibility_index(
         score = sum(components[k] * w for k, w in COMPONENT_WEIGHTS.items())
 
         # A junction is a graph node, not a place anyone lives; a place cut off
-        # from every market cannot be scored, only reported.
-        is_settlement = bool(
-            place.population > 0 or place.has_market or place.has_coldstore
-        )
+        # from every market cannot be scored, only reported. This keys on kind
+        # rather than population because OSM tags population on only a minority
+        # of villages - testing population > 0 would throw most real
+        # settlements away as if they were junctions.
+        is_settlement = place.kind != JUNCTION_KIND
         reachable = m_h is not None and g_h is not None
 
         rows.append(

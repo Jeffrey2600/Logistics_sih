@@ -106,6 +106,15 @@ def haversine_km(a: Place, b: Place) -> float:
 
 OSM_NODES = PROCESSED_DIR / "osm_nodes.csv"
 OSM_EDGES = PROCESSED_DIR / "osm_edges.csv"
+SETTLEMENT_NODES = PROCESSED_DIR / "settlement_nodes.csv"
+SETTLEMENT_EDGES = PROCESSED_DIR / "settlement_edges.csv"
+SETTLEMENT_MERGES = PROCESSED_DIR / "settlement_merges.csv"
+
+# A node the road graph invented, as opposed to a place people live in. The
+# distinction has to be by kind rather than by population: OSM tags population
+# on only a minority of villages, so "population == 0" would discard most real
+# settlements as if they were junctions.
+JUNCTION_KIND = "junction"
 
 # Sensible defaults for attributes OSM does not carry. Landslide history comes
 # from the COOLR join when it has been run; monsoon exposure is a placeholder
@@ -174,6 +183,57 @@ def use_osm() -> bool:
     )
 
 
+def merge_settlements(net: Network, protected_ids: set[str]) -> Network:
+    """Add OSM populated places, so the model knows where people actually live.
+
+    Without this the accessibility index ranks only the 46 hand-built seed
+    towns however large the road network grows, because every other node is a
+    junction. Settlements arrive as nodes joined by last-mile connector edges,
+    plus a merge list for those that landed on an existing node.
+
+    `protected_ids` are never overwritten - the seed places, whose population,
+    markets and cold stores are curated. An OSM `population` tag is not better
+    evidence. They are passed in rather than inferred from the node kind,
+    because inferring it would silently stop protecting them the moment the
+    seed data grew a node kind the check did not anticipate.
+    """
+    if not (SETTLEMENT_NODES.exists() and SETTLEMENT_EDGES.exists()):
+        return net
+
+    places = dict(net.places)
+
+    for place_id, place in _read_places(SETTLEMENT_NODES).items():
+        if place_id not in places:
+            places[place_id] = place
+
+    if SETTLEMENT_MERGES.exists():
+        with SETTLEMENT_MERGES.open() as fh:
+            for row in csv.DictReader(fh):
+                node_id = row["node_id"]
+                existing = places.get(node_id)
+                if existing is None or node_id in protected_ids:
+                    continue
+                # A bare junction becomes the settlement sitting on top of it.
+                places[node_id] = Place(
+                    id=node_id,
+                    name=row["name"],
+                    state=existing.state,
+                    lat=existing.lat,
+                    lon=existing.lon,
+                    kind=row["kind"],
+                    population=int(row.get("population") or 0),
+                    has_market=existing.has_market,
+                    has_coldstore=existing.has_coldstore,
+                )
+
+    edges = list(net.edges)
+    for edge in _read_edges(SETTLEMENT_EDGES, places,
+                            {"monsoon_exposure": OSM_DEFAULT_MONSOON_EXPOSURE}):
+        edges.append(edge)
+
+    return Network(places=places, edges=edges)
+
+
 def merge_osm(seed: Network, osm: Network) -> Network:
     """Union the OSM road graph with the seed's rail, water and air links.
 
@@ -214,7 +274,7 @@ def load_network() -> Network:
         edges=_read_edges(OSM_EDGES, osm_places,
                           {"monsoon_exposure": OSM_DEFAULT_MONSOON_EXPOSURE}),
     )
-    return merge_osm(seed, osm)
+    return merge_settlements(merge_osm(seed, osm), set(seed.places))
 
 
 def build_graph(

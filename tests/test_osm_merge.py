@@ -164,3 +164,106 @@ def test_built_osm_csv_matches_the_loader_schema(tmp_path):
     assert edges[0]["monsoon_exposure"] == 0.45, "OSM default not applied"
     assert edges[0]["landslide_events"] == 0
     assert edges[0]["id"] == "n1-n2-road"
+
+
+# --------------------------------------------------------- settlements -----
+
+def write(path, rows, fields):
+    with path.open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+
+
+@pytest.fixture
+def settlement_files(tmp_path, monkeypatch):
+    """Point the loader at a temporary settlement dataset."""
+    from backend.app.core import network as net_mod
+
+    nodes, edges, merges = (tmp_path / "n.csv", tmp_path / "e.csv", tmp_path / "m.csv")
+    write(nodes, [{
+        "id": "s1", "name": "Nongpoh", "state": "", "lat": 25.9, "lon": 91.88,
+        "kind": "village", "population": 12000, "population_known": 1,
+        "has_market": 0, "has_coldstore": 0,
+    }], ["id", "name", "state", "lat", "lon", "kind", "population",
+         "population_known", "has_market", "has_coldstore"])
+    write(edges, [{
+        "u": "s1", "v": "n123", "mode": "road", "distance_km": 4.2,
+        "terrain": "plain", "route_ref": "access", "lanes": 1,
+        "highway": "access", "bridge": 0, "tunnel": 0, "surface": "", "osm_way_id": 0,
+    }], ["u", "v", "mode", "distance_km", "terrain", "route_ref", "lanes",
+         "highway", "bridge", "tunnel", "surface", "osm_way_id"])
+    write(merges, [
+        {"node_id": "n123", "name": "Umsning", "kind": "village",
+         "population": 3000, "population_known": 1},
+        {"node_id": "GAU", "name": "Not Guwahati", "kind": "hamlet",
+         "population": 12, "population_known": 1},
+    ], ["node_id", "name", "kind", "population", "population_known"])
+
+    monkeypatch.setattr(net_mod, "SETTLEMENT_NODES", nodes)
+    monkeypatch.setattr(net_mod, "SETTLEMENT_EDGES", edges)
+    monkeypatch.setattr(net_mod, "SETTLEMENT_MERGES", merges)
+    return nodes
+
+
+def test_settlements_are_added_with_connectors(seed, osm, settlement_files):
+    from backend.app.core.network import merge_osm, merge_settlements
+
+    merged = merge_settlements(merge_osm(seed, osm), set(seed.places))
+    assert "s1" in merged.places
+    assert merged.places["s1"].population == 12000
+    connector = [e for e in merged.edges if e["u"] == "s1"]
+    assert connector and connector[0]["route_ref"] == "access"
+    assert len(merged.components()) == 1
+
+
+def test_a_junction_becomes_the_settlement_sitting_on_it(seed, osm, settlement_files):
+    from backend.app.core.network import merge_osm, merge_settlements
+
+    merged = merge_settlements(merge_osm(seed, osm), set(seed.places))
+    assert merged.places["n123"].name == "Umsning"
+    assert merged.places["n123"].kind == "village"
+    assert merged.places["n123"].population == 3000
+
+
+def test_seed_places_are_never_overwritten_by_an_osm_tag(seed, osm, settlement_files):
+    """Seed metadata is curated; an OSM population tag is not better evidence."""
+    from backend.app.core.network import merge_osm, merge_settlements
+
+    merged = merge_settlements(merge_osm(seed, osm), set(seed.places))
+    assert merged.places["GAU"].name == "Guwahati"
+    assert merged.places["GAU"].population == 1116267
+    assert merged.places["GAU"].has_market
+
+
+def test_missing_settlement_files_are_a_no_op(seed, osm, tmp_path, monkeypatch):
+    from backend.app.core import network as net_mod
+
+    monkeypatch.setattr(net_mod, "SETTLEMENT_NODES", tmp_path / "absent.csv")
+    monkeypatch.setattr(net_mod, "SETTLEMENT_EDGES", tmp_path / "absent2.csv")
+    base = net_mod.merge_osm(seed, osm)
+    assert net_mod.merge_settlements(base, set(seed.places)).places == base.places
+
+
+def test_a_village_with_untagged_population_still_counts_as_a_settlement(risk_model):
+    """OSM tags population on a minority of villages. Testing population > 0
+    would throw most real settlements away as if they were junctions."""
+    from backend.app.core.network import Network, Place
+    from backend.app.services.accessibility import accessibility_index
+
+    places = {
+        "GAU": Place(id="GAU", name="Guwahati", state="Assam", lat=26.14, lon=91.73,
+                     kind="city", population=1116267, has_market=True, has_coldstore=True),
+        "s9": Place(id="s9", name="Untagged village", state="", lat=26.3, lon=91.9,
+                    kind="village", population=0, has_market=False, has_coldstore=False),
+        "n7": Place(id="n7", name="n7", state="", lat=26.2, lon=91.8,
+                    kind="junction", population=0, has_market=False, has_coldstore=False),
+    }
+    edges = [
+        edge("GAU", "n7", "road", distance_km=20.0),
+        edge("n7", "s9", "road", distance_km=15.0),
+    ]
+    result = accessibility_index(Network(places=places, edges=edges), risk_model, month="jul")
+    ranked = {r["id"] for r in result["underserved"]}
+    assert "s9" in ranked, "an untagged village is still a place people live"
+    assert "n7" not in ranked

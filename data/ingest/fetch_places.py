@@ -35,7 +35,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from common import PROCESSED_DIR, RAW_DIR, ensure_dirs  # noqa: E402
-from fetch_osm import NER_REGIONS, run_query, write_csv  # noqa: E402
+from fetch_osm import (  # noqa: E402
+    NER_REGIONS, region_bbox, run_query, tiles, write_csv,
+)
 from places import MAX_ATTACH_KM, PLACE_CLASSES, attach, parse_places  # noqa: E402
 
 NETWORK_NODES = PROCESSED_DIR / "osm_nodes.csv"
@@ -61,21 +63,43 @@ def build_places_query(relation_id: int, bbox=None, timeout: int = 300) -> str:
 
 
 def download(regions) -> dict:
+    """Fetch settlements per region, with the same tiled retry as the road walk.
+
+    A mirror will answer an area query with HTTP 200 and an empty list, which is
+    indistinguishable from a state with no settlements. Treating that as fatal
+    lets one flaky region cost the other eight, so it falls back to tiles
+    clipped to the same area instead.
+    """
     print(f"Fetching settlements for {len(regions)} regions…")
     merged: dict[int, dict] = {}
+
     for index, (name, relation_id, bbox) in enumerate(regions, 1):
-        payload = run_query(build_places_query(relation_id, bbox))
-        nodes = [e for e in payload.get("elements", []) if e.get("type") == "node"]
-        if not nodes:
-            raise SystemExit(
-                f"{name} returned no settlements. A mirror can answer with HTTP "
-                "200 and an empty list; re-run rather than accept it."
-            )
+        label = f"  [{index}/{len(regions)}] {name}"
+        try:
+            payload = run_query(build_places_query(relation_id, bbox))
+            nodes = [e for e in payload.get("elements", []) if e.get("type") == "node"]
+            if not nodes:
+                raise SystemExit(f"{name} returned no settlements")
+        except SystemExit as exc:
+            area = bbox or region_bbox(relation_id)
+            grid = tiles(area)
+            print(f"{label}: {exc}; retrying as {len(grid)} tiles", flush=True)
+            seen: dict[int, dict] = {}
+            for sub in grid:
+                sub_payload = run_query(build_places_query(relation_id, sub))
+                for element in sub_payload.get("elements", []):
+                    if element.get("type") == "node":
+                        seen[element["id"]] = element
+            nodes = list(seen.values())
+            if not nodes:
+                raise SystemExit(f"{name}: no settlements even after tiling") from exc
+
         fresh = sum(1 for n in nodes if n["id"] not in merged)
         for element in nodes:
             merged[element["id"]] = element
-        print(f"  [{index}/{len(regions)}] {name}: {len(nodes):>5} places "
-              f"({fresh:>5} new, {len(merged):>6} total)", flush=True)
+        print(f"{label}: {len(nodes):>5} places ({fresh:>5} new, "
+              f"{len(merged):>6} total)", flush=True)
+
     return {"elements": list(merged.values())}
 
 
