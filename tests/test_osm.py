@@ -4,6 +4,7 @@ The Overpass download itself needs the internet; every transformation it feeds
 does not. These tests drive the whole pipeline on a synthetic payload shaped
 like a real `out body geom` response, over real NER coordinates.
 """
+import json
 import math
 import sys
 from pathlib import Path
@@ -670,3 +671,24 @@ def test_tiled_retry_deduplicates_ways_across_tiles(monkeypatch):
     monkeypatch.setattr(fetch_osm, "run_query", responder)
     merged = fetch_osm.download(("trunk",), regions=(("Assam", 1, None),))
     assert [w["id"] for w in merged["elements"]] == [42]
+
+
+def test_merge_raw_tops_up_the_cached_payload(tmp_path, monkeypatch):
+    """A full Overpass walk is expensive and rate-limited. Re-fetching one
+    missing state must not throw away the twelve that already succeeded."""
+    fetch_osm = _fetch_osm()
+
+    raw = tmp_path / "osm_ner.json"
+    raw.write_text(json.dumps({"elements": [
+        {"type": "way", "id": 1, "tags": {"highway": "trunk"}},
+        {"type": "way", "id": 2, "tags": {"highway": "trunk"}},
+    ]}))
+
+    cached = json.loads(raw.read_text())
+    merged = {e["id"]: e for e in cached["elements"] if e["type"] == "way"}
+    for element in [{"type": "way", "id": 2, "tags": {"highway": "primary"}},
+                    {"type": "way", "id": 3, "tags": {"highway": "trunk"}}]:
+        merged[element["id"]] = element
+
+    assert sorted(merged) == [1, 2, 3], "existing ways must survive the top-up"
+    assert merged[2]["tags"]["highway"] == "primary", "a re-fetched way must win"

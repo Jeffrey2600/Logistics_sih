@@ -286,6 +286,9 @@ def main() -> None:
     parser.add_argument("--merge-km", type=float, default=DEFAULT_MERGE_RADIUS_KM,
                         help="collapse all OSM nodes within this distance of a seed place")
     parser.add_argument("--only", help="comma-separated region names to fetch")
+    parser.add_argument("--merge-raw", action="store_true",
+                        help="merge the fetched regions into the cached raw payload "
+                             "instead of replacing it")
     parser.add_argument("--node-merge-m", type=float, default=DEFAULT_NODE_MERGE_METRES,
                         help="collapse OSM nodes closer together than this (metres)")
     parser.add_argument("--dry-run", action="store_true",
@@ -319,6 +322,21 @@ def main() -> None:
         print(f"Loaded {args.from_file} ({len(payload.get('elements', []))} elements)")
     else:
         payload = download(classes, regions)
+        if args.merge_raw and raw_path.exists():
+            # Free Overpass mirrors rate-limit hard, and a full walk is a lot to
+            # repeat for the sake of one missing state. Topping up the cached
+            # payload keeps a costly successful download useful.
+            cached = json.loads(raw_path.read_text())
+            merged = {
+                e["id"]: e for e in cached.get("elements", [])
+                if e.get("type") == "way"
+            }
+            before = len(merged)
+            for element in payload.get("elements", []):
+                if element.get("type") == "way":
+                    merged[element["id"]] = element
+            payload = {"elements": list(merged.values())}
+            print(f"Merged into cached payload: {before} -> {len(merged)} ways")
         raw_path.write_text(json.dumps(payload))
         print(f"Wrote {raw_path} ({len(payload.get('elements', []))} elements)")
 
