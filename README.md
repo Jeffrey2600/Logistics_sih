@@ -86,7 +86,7 @@ places and 78 multimodal segments ships in `data/seed/`, and the rainfall
 climatology is committed. It runs offline, on a fresh clone, immediately.
 
 ```bash
-python -m pytest tests -q     # 144 tests
+python -m pytest tests -q     # 154 tests
 ```
 
 ## Deployment
@@ -106,7 +106,7 @@ every data layer still renders with no internet at all.
 | Seed network (46 places, 78 segments) | Hand-built from NH/NFR/NW-2 alignments | Committed |
 | Monthly rainfall climatology | NASA POWER (free, no key) | **Fetched and committed** |
 | Landslide occurrences | NASA COOLR / Global Landslide Catalog | Fetcher written, **not yet run** — host still blocked (see `docs/NETWORK_ACCESS.md`) |
-| Road network at scale | OpenStreetMap via Overpass | Pipeline built and tested; download reachable via the Kumi mirror (see `docs/NETWORK_ACCESS.md`) |
+| Road network at scale | OpenStreetMap via Overpass | **Built** — 14,531 ways over the nine regions, 6,502 nodes, 25,360 km, 98% connected, all 46 seed places anchored |
 
 ```bash
 python data/ingest/fetch_rainfall.py       # verified working
@@ -199,15 +199,18 @@ These are real, and stating them is better than being asked about them.
    Every rate, speed and penalty lives in `backend/app/config.py` with a source
    note, so a surveyed number can replace an assumed one without touching the
    algorithms.
-4. **The default network is coarse.** 46 towns, not 30,000 villages. The
-   accessibility index is computed correctly over whatever network it is given,
-   and the OSM pipeline that expands it is built and tested — but its download
-   has never run, so no large network has actually been built and profiled.
-   Expect the first real build to need tuning of the snap and merge radii, and
-   expect accessibility to slow down: it runs a multi-source Dijkstra per
-   facility class per month, which is fine over 46 nodes and will need caching
-   over 50,000.
-5. **Accessibility is scored at nodes, not over a population surface.** Proper
+4. **Settlements, not villages.** The OSM network is built — 6,502 nodes and
+   25,360 km of road — but almost all of those nodes are road junctions. The
+   only *settlements* in the model are still the 46 seed places, so the
+   accessibility ranking covers 46 towns however large the road graph gets.
+   Village-level results need a populated-places layer (OSM `place=village`,
+   or the Census village directory) joined onto the network. Until then the
+   road geometry is real and the settlement coverage is not.
+5. **Performance is adequate, not tuned.** Against the OSM network a route
+   takes about 3 s and the accessibility index about 6 s, because both rebuild
+   the mode-layered graph per request. That is fine for a demo and would need
+   caching for anything busier.
+6. **Accessibility is scored at nodes, not over a population surface.** Proper
    spatial equity work would use a WorldPop raster and travel-time isochrones.
 
 ## Layout
@@ -234,5 +237,5 @@ data/ingest/
   fetch_landslides.py  NASA COOLR, snapped to segments
   build_training_set.py
 ml/landslide/          model training
-tests/                 144 tests
+tests/                 154 tests
 ```

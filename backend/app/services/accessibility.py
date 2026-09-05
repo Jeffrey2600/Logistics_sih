@@ -125,9 +125,18 @@ def accessibility_index(
         }
         score = sum(components[k] * w for k, w in COMPONENT_WEIGHTS.items())
 
+        # A junction is a graph node, not a place anyone lives; a place cut off
+        # from every market cannot be scored, only reported.
+        is_settlement = bool(
+            place.population > 0 or place.has_market or place.has_coldstore
+        )
+        reachable = m_h is not None and g_h is not None
+
         rows.append(
             {
                 **place.to_dict(),
+                "is_settlement": is_settlement,
+                "reachable": reachable,
                 "hours_to_market": round(m_h, 2) if m_h is not None else None,
                 "hours_to_coldstore": round(c_h, 2) if c_h is not None else None,
                 "hours_to_gateway": round(g_h, 2) if g_h is not None else None,
@@ -139,11 +148,21 @@ def accessibility_index(
         )
 
     rows.sort(key=lambda r: r["accessibility_score"])
+
+    # Rank settlements only. Once the network comes from OSM, most nodes are
+    # road junctions - nobody lives at a junction, and an unreachable one scores
+    # a perfect zero, so ranking every node buries the real towns under graph
+    # artefacts. The map still colours every node; the ranking is about places
+    # where people actually are.
+    ranked = [r for r in rows if r["is_settlement"] and r["reachable"]]
+
     return {
         "month": month,
         "risk_model": risk_model.name,
         "component_weights": COMPONENT_WEIGHTS,
-        "underserved": rows[:10],
+        "settlements": len(ranked),
+        "unreachable": sum(1 for r in rows if not r["reachable"]),
+        "underserved": ranked[:10],
         "places": rows,
     }
 

@@ -85,3 +85,52 @@ def test_facility_impact_rejects_unknown_site(network, risk_model):
 def test_facility_impact_rejects_bad_type(network, risk_model):
     with pytest.raises(ValueError, match="facility_type"):
         facility_impact(network, risk_model, candidate_ids=["KHM"], facility_type="airport")
+
+
+def test_every_row_is_flagged_as_settlement_or_not(july):
+    for row in july["places"]:
+        assert isinstance(row["is_settlement"], bool)
+        assert isinstance(row["reachable"], bool)
+
+
+def test_seed_places_are_settlements(july):
+    """Every seed place has population, a market or a cold store."""
+    assert all(row["is_settlement"] for row in july["places"])
+    assert july["settlements"] == len(july["places"])
+    assert july["unreachable"] == 0
+
+
+def test_ranking_excludes_junctions_and_unreachable_nodes(network, risk_model):
+    """At OSM scale most nodes are road junctions. Nobody lives at a junction,
+    and an unreachable one scores a perfect zero, so ranking every node buries
+    the real towns under graph artefacts."""
+    from backend.app.core.network import Network, Place
+
+    places = dict(network.places)
+    # A junction on the network, and a town cut off from it entirely.
+    places["n999"] = Place(id="n999", name="n999", state="", lat=26.0, lon=92.0,
+                           kind="junction", population=0,
+                           has_market=False, has_coldstore=False)
+    places["ORPHAN"] = Place(id="ORPHAN", name="Orphan", state="Assam",
+                             lat=27.9, lon=96.9, kind="town", population=5000,
+                             has_market=False, has_coldstore=False)
+    junction_edge = dict(network.edges[0])
+    junction_edge.update({"id": "GAU-n999-road", "u": "GAU", "v": "n999"})
+
+    widened = Network(places=places, edges=network.edges + [junction_edge])
+    result = accessibility_index(widened, risk_model, month="jul")
+
+    ranked = {row["id"] for row in result["underserved"]}
+    assert "n999" not in ranked, "a road junction is not an underserved place"
+    assert "ORPHAN" not in ranked, "an unreachable place cannot be scored"
+
+    # Both still appear in the full list, so the map can draw them.
+    all_ids = {row["id"] for row in result["places"]}
+    assert {"n999", "ORPHAN"} <= all_ids
+    assert result["unreachable"] >= 1
+
+
+def test_underserved_is_ranked_worst_first_among_settlements(july):
+    scores = [row["accessibility_score"] for row in july["underserved"]]
+    assert scores == sorted(scores)
+    assert all(row["is_settlement"] and row["reachable"] for row in july["underserved"])
