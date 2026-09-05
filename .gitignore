@@ -7,8 +7,14 @@ node_modules/
 dist/
 .DS_Store
 data/raw/
+data/raw/
 data/processed/*
+# The built network is committed: regenerating it needs a 10-15 minute walk
+# over rate-limited Overpass mirrors, and the point is that a fresh clone runs.
 !data/processed/place_rainfall.csv
+!data/processed/osm_nodes.csv
+!data/processed/osm_edges.csv
+!data/processed/osm_rainfall.csv
 !data/processed/.gitkeep
 ml/landslide/model.joblib
 ml/landslide/model_meta.json

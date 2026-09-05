@@ -74,16 +74,24 @@ not an answer a district officer can act on.
 ## Running it
 
 ```bash
-pip install -r requirements-dev.txt
-uvicorn backend.app.main:app --reload
+./run.sh              # seed network (46 places), starts in a second
+./run.sh --osm        # full OSM network: 6,502 nodes, 25,360 km of road
 ```
 
 Then open <http://localhost:8000> for the dashboard, or
 <http://localhost:8000/docs> for the API.
 
-There are no external data dependencies at runtime: a seed network of 46 NER
-places and 78 multimodal segments ships in `data/seed/`, and the rainfall
-climatology is committed. It runs offline, on a fresh clone, immediately.
+Or by hand:
+
+```bash
+pip install -r requirements-dev.txt
+uvicorn backend.app.main:app --reload            # add NER_USE_OSM=1 for OSM
+```
+
+There are no external data dependencies at runtime. The seed network, the
+rainfall climatology and the built OSM road network are all committed, so a
+fresh clone runs offline and immediately — rebuilding the OSM network would
+otherwise mean a 10-15 minute walk over rate-limited Overpass mirrors.
 
 ```bash
 python -m pytest tests -q     # 154 tests
