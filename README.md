@@ -73,9 +73,19 @@ not an answer a district officer can act on.
 
 ## Running it
 
+macOS / Linux:
+
 ```bash
 ./run.sh              # seed network (46 places), starts in a second
 ./run.sh --osm        # full OSM network: 6,502 nodes, 25,360 km of road
+```
+
+Windows (PowerShell) — note that `&&` is not a statement separator before
+PowerShell 7, so run each line on its own:
+
+```powershell
+.\run.ps1             # seed network
+.\run.ps1 -Osm        # full OSM network
 ```
 
 Then open <http://localhost:8000> for the dashboard, or
