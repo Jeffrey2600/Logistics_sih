@@ -69,3 +69,74 @@ def test_mode_filter_excludes_other_layers(network, risk_model):
         network, risk_model, "jul", {"cost": 1, "time": 0, "risk": 0}, allowed_modes={"road"}
     )
     assert all(node[1] == "road" for node in graph.nodes)
+
+
+# ------------------------------------------------------------ graph cache ---
+
+def test_cached_graph_returns_the_same_object(network, risk_model):
+    from backend.app.core.network import cached_graph, clear_graph_cache
+
+    clear_graph_cache()
+    weights = {"cost": 0.4, "time": 0.4, "risk": 0.2}
+    first = cached_graph(network, risk_model, "jul", weights)
+    second = cached_graph(network, risk_model, "jul", weights)
+    assert first is second
+
+
+def test_cache_key_separates_what_changes_the_graph(network, risk_model):
+    from backend.app.core.network import cached_graph, clear_graph_cache
+
+    clear_graph_cache()
+    base = {"cost": 0.4, "time": 0.4, "risk": 0.2}
+    graph = cached_graph(network, risk_model, "jul", base)
+    assert cached_graph(network, risk_model, "jan", base) is not graph
+    assert cached_graph(network, risk_model, "jul", {"cost": 1, "time": 0, "risk": 0}) is not graph
+    assert cached_graph(network, risk_model, "jul", base, allowed_modes={"road"}) is not graph
+    assert cached_graph(network, risk_model, "jul", base,
+                        blocked_edge_ids={"SLG-GTK-road"}) is not graph
+    assert cached_graph(network, risk_model, "jul", base, value_of_time=900) is not graph
+
+
+def test_terminals_are_removed_so_a_cached_graph_is_not_corrupted(network, risk_model):
+    """Planning mutates the graph to add a super-source and sink. Leaving them
+    behind would poison every later request that hits the same cache entry."""
+    from backend.app.core.network import cached_graph, clear_graph_cache
+    from backend.app.services.routing import plan_route
+
+    clear_graph_cache()
+    weights = {"cost": 0.4, "time": 0.4, "risk": 0.2}
+    graph = cached_graph(network, risk_model, "jul", weights)
+    before = graph.number_of_nodes()
+
+    plan_route(network, risk_model, "KHM", "GAU", month="jul")
+    assert graph.number_of_nodes() == before
+    assert not graph.has_node(("__src__", "*"))
+    assert not graph.has_node(("__dst__", "*"))
+
+
+def test_repeated_plans_stay_identical_with_a_warm_cache(network, risk_model):
+    """A stale terminal would silently change the second answer."""
+    from backend.app.core.network import clear_graph_cache
+    from backend.app.services.routing import plan_route
+
+    clear_graph_cache()
+    first = plan_route(network, risk_model, "IMP", "GAU", month="jul")
+    second = plan_route(network, risk_model, "IMP", "GAU", month="jul")
+    assert first["recommended"]["summary"] == second["recommended"]["summary"]
+
+
+def test_a_failed_plan_still_cleans_up_its_terminals(network, risk_model):
+    from backend.app.core.network import cached_graph, clear_graph_cache
+    from backend.app.services.routing import RoutingError, plan_route
+
+    clear_graph_cache()
+    weights = {"cost": 0.4, "time": 0.4, "risk": 0.2}
+    graph = cached_graph(network, risk_model, "jul", weights,
+                         blocked_edge_ids={"SLG-GTK-road"})
+    before = graph.number_of_nodes()
+    try:
+        plan_route(network, risk_model, "GTK", "GAU", month="jul",
+                   blocked_edge_ids=["SLG-GTK-road"])
+    except RoutingError:
+        pass
+    assert graph.number_of_nodes() == before

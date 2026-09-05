@@ -13,7 +13,7 @@ import math
 import networkx as nx
 
 from ..config import DRY_SEASON, MODES, PEAK_MONSOON
-from ..core.network import Network, build_graph
+from ..core.network import Network, cached_graph
 from ..core.risk import RiskModel
 
 # Half-life style decay constants, in hours. A facility 3h away scores well for
@@ -69,7 +69,7 @@ def _decay_score(hours: float | None, tau: float) -> float:
 
 def _graph_for(network: Network, risk_model: RiskModel, month: str) -> nx.DiGraph:
     # Accessibility is a time question, so the graph is built time-weighted.
-    return build_graph(
+    return cached_graph(
         network,
         risk_model,
         month,

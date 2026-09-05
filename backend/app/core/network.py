@@ -278,8 +278,62 @@ def build_graph(
     return graph
 
 
+# Graphs are cached, so anything that mutates one must undo itself. The cache is
+# small on purpose: each entry is a whole layered graph, and at OSM scale that is
+# tens of thousands of nodes.
+_GRAPH_CACHE: dict[tuple, nx.DiGraph] = {}
+_GRAPH_CACHE_MAX = 6
+
+
+def cached_graph(
+    network: Network,
+    risk_model: RiskModel,
+    month: str,
+    weights: dict[str, float],
+    allowed_modes: set[str] | None = None,
+    blocked_edge_ids: set[str] | None = None,
+    value_of_time: float = 25.0,
+) -> nx.DiGraph:
+    """build_graph, memoised on everything that changes the result.
+
+    Rebuilding the layered graph per request costs seconds once the network
+    comes from OSM. The accessibility index in particular asks for the same
+    time-weighted graph over and over, so it hits this cache every time after
+    the first.
+    """
+    key = (
+        id(network),
+        risk_model.name,
+        month.lower()[:3],
+        tuple(sorted(weights.items())),
+        tuple(sorted(allowed_modes or MODES)),
+        tuple(sorted(blocked_edge_ids or ())),
+        value_of_time,
+    )
+    graph = _GRAPH_CACHE.get(key)
+    if graph is None:
+        graph = build_graph(
+            network, risk_model, month, weights,
+            allowed_modes=allowed_modes,
+            blocked_edge_ids=blocked_edge_ids,
+            value_of_time=value_of_time,
+        )
+        if len(_GRAPH_CACHE) >= _GRAPH_CACHE_MAX:
+            _GRAPH_CACHE.pop(next(iter(_GRAPH_CACHE)))
+        _GRAPH_CACHE[key] = graph
+    return graph
+
+
+def clear_graph_cache() -> None:
+    _GRAPH_CACHE.clear()
+
+
 def attach_terminals(graph: nx.DiGraph, origin: str, destination: str) -> tuple[str, str]:
-    """Add zero-cost super-source/sink so a trip may start or end in any mode."""
+    """Add zero-cost super-source/sink so a trip may start or end in any mode.
+
+    Mutates the graph, which is now shared via the cache, so every caller must
+    pair this with `detach_terminals`.
+    """
     source, sink = ("__src__", "*"), ("__dst__", "*")
     zero = {"kind": "virtual", "mode": None, "raw": None, "risk": None, "cost": None, "weight": 0.0}
 
@@ -289,3 +343,8 @@ def attach_terminals(graph: nx.DiGraph, origin: str, destination: str) -> tuple[
         if graph.has_node((destination, mode)):
             graph.add_edge((destination, mode), sink, edge_id="dst", **zero)
     return source, sink
+
+
+def detach_terminals(graph: nx.DiGraph, source, sink) -> None:
+    """Remove the virtual terminals, restoring a cached graph exactly."""
+    graph.remove_nodes_from([source, sink])
