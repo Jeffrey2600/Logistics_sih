@@ -86,7 +86,7 @@ places and 78 multimodal segments ships in `data/seed/`, and the rainfall
 climatology is committed. It runs offline, on a fresh clone, immediately.
 
 ```bash
-python -m pytest tests -q     # 136 tests
+python -m pytest tests -q     # 144 tests
 ```
 
 ## Deployment
@@ -138,6 +138,14 @@ Two decisions carry most of the weight:
   Anchoring only the nearest one leaves the rest as junctions metres away and
   fragments the graph at exactly the places the model cares most about, so
   everything within `--merge-km` collapses into the place.
+- **Contract short stubs, never drop them.** OSM splits a highway at every
+  change of tagging, so junctions are surrounded by links a few metres long.
+  Filtering those out looks like tidying and is destructive: an edge is the only
+  thing carrying connectivity, so deleting a 30 m link severs whatever it
+  joined. On the first real extract that filter left a largest connected
+  component of 20 nodes out of 768. Nodes within `--node-merge-m` are merged by
+  union-find over a spatial grid instead, which took the same extract to
+  426 of 432 nodes connected.
 
 Queries are scoped to the nine administrative areas — the eight NE states plus
 the Siliguri Corridor sliver of West Bengal — rather than a bounding box. The
@@ -226,5 +234,5 @@ data/ingest/
   fetch_landslides.py  NASA COOLR, snapped to segments
   build_training_set.py
 ml/landslide/          model training
-tests/                 136 tests
+tests/                 144 tests
 ```

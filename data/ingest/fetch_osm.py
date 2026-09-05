@@ -39,8 +39,8 @@ from common import (  # noqa: E402
     load_seed_places,
 )
 from osm import (  # noqa: E402
-    DEFAULT_MERGE_RADIUS_KM, DEFAULT_SNAP_RADIUS_KM, HIGHWAY_CLASSES,
-    build_network, degree_histogram, largest_component,
+    DEFAULT_MERGE_RADIUS_KM, DEFAULT_NODE_MERGE_METRES, DEFAULT_SNAP_RADIUS_KM,
+    HIGHWAY_CLASSES, build_network, degree_histogram, largest_component,
 )
 
 # Mirrors, tried in order. Kumi is first because it is the most tolerant of
@@ -256,6 +256,8 @@ def main() -> None:
     parser.add_argument("--merge-km", type=float, default=DEFAULT_MERGE_RADIUS_KM,
                         help="collapse all OSM nodes within this distance of a seed place")
     parser.add_argument("--only", help="comma-separated region names to fetch")
+    parser.add_argument("--node-merge-m", type=float, default=DEFAULT_NODE_MERGE_METRES,
+                        help="collapse OSM nodes closer together than this (metres)")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the Overpass queries and exit")
     args = parser.parse_args()
@@ -292,7 +294,8 @@ def main() -> None:
 
     places = load_seed_places()
     network = build_network(payload, places, snap_radius_km=args.snap_km,
-                            merge_radius_km=args.merge_km)
+                            merge_radius_km=args.merge_km,
+                            node_merge_metres=args.node_merge_m)
 
     if not network.edges:
         raise SystemExit(

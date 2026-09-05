@@ -311,10 +311,15 @@ def test_non_freight_classes_are_excluded(payload, places):
     assert all(edge["highway"] != "residential" for edge in network.edges)
 
 
-def test_short_chains_are_dropped(payload, places):
-    """The Shillong spur is under half a kilometre and is not a freight link."""
-    network = build_network(payload, places, min_edge_km=0.5)
-    assert all(edge["distance_km"] >= 0.5 for edge in network.edges)
+def test_min_edge_km_is_opt_in_and_defaults_to_keeping_everything(payload, places):
+    """Filtering short edges looks like tidying and is destructive: an edge is
+    the only thing carrying connectivity, so dropping the stubs OSM leaves
+    around junctions shatters the graph. It stays available, but off."""
+    import inspect
+
+    assert inspect.signature(build_network).parameters["min_edge_km"].default == 0.0
+    filtered = build_network(payload, places, min_edge_km=0.5)
+    assert all(edge["distance_km"] >= 0.5 for edge in filtered.edges)
 
 
 def test_anchored_places_are_named_by_their_seed_id(payload, places):
@@ -523,3 +528,75 @@ def test_a_region_too_large_falls_back_to_tiles(monkeypatch):
     )
     assert calls["n"] > 1, "expected a tiled retry"
     assert merged["elements"]
+
+
+# ------------------------------------------------------- node clustering ----
+
+def test_coincident_nodes_collapse_into_one():
+    from osm import cluster_nodes
+
+    coords = {
+        1: (26.1000, 91.7000),
+        2: (26.10005, 91.70005),   # ~7 m away: the same junction
+        3: (26.2000, 91.8000),     # far
+    }
+    leaders = cluster_nodes(coords, merge_metres=75.0)
+    assert leaders[1] == leaders[2]
+    assert leaders[3] != leaders[1]
+
+
+def test_clustering_is_deterministic():
+    from osm import cluster_nodes
+
+    coords = {9: (26.1, 91.7), 3: (26.10005, 91.70005), 7: (26.10002, 91.70002)}
+    leaders = cluster_nodes(coords, merge_metres=75.0)
+    assert set(leaders.values()) == {3}, "smallest id should lead the cluster"
+
+
+def test_clustering_is_transitive_along_a_chain_of_stubs():
+    """Three 40 m stubs in a row are one junction, not three."""
+    from osm import cluster_nodes
+
+    coords = {i: (26.1 + i * 0.00036, 91.7) for i in range(4)}   # ~40 m apart
+    leaders = cluster_nodes(coords, merge_metres=75.0)
+    assert len(set(leaders.values())) == 1
+
+
+def test_nodes_across_a_grid_boundary_still_merge():
+    """Bucketing must not miss a pair that straddles two cells."""
+    from osm import cluster_nodes
+
+    cell = (75.0 / 1000.0) / 111.0
+    lat = cell * 40                       # sits exactly on a cell edge
+    coords = {1: (lat - 0.00002, 91.7), 2: (lat + 0.00002, 91.7)}
+    assert len(set(cluster_nodes(coords, merge_metres=75.0).values())) == 1
+
+
+def test_clustering_does_not_merge_genuinely_distinct_junctions():
+    from osm import cluster_nodes
+
+    coords = {1: (26.10, 91.70), 2: (26.11, 91.70)}   # ~1.1 km apart
+    assert len(set(cluster_nodes(coords, merge_metres=75.0).values())) == 2
+
+
+def test_an_anchored_place_claims_its_whole_cluster(payload, places):
+    """If any node in a merged cluster is a seed place, the cluster is it."""
+    network = build_network(payload, places)
+    assert "GAU" in network.nodes
+    assert network.nodes["GAU"]["population"] == 1116267
+    # No synthetic node should survive at the same spot as an anchored place.
+    for node_id, node in network.nodes.items():
+        if node_id.startswith("n"):
+            assert haversine_km(node["lat"], node["lon"], GAU[0], GAU[1]) > 0.5
+
+
+def test_merging_keeps_the_graph_connected(payload, places):
+    """The regression that mattered: dropping stubs left 3% of nodes reachable."""
+    network = build_network(payload, places)
+    component = largest_component(network)
+    assert len(component) == len(network.nodes)
+
+
+def test_stubs_do_not_become_self_loops(payload, places):
+    network = build_network(payload, places)
+    assert all(edge["u"] != edge["v"] for edge in network.edges)

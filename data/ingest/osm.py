@@ -52,6 +52,14 @@ SINUOSITY_MOUNTAIN = 1.35
 # traced rather than by terrain, so it is not trusted.
 MIN_LENGTH_FOR_SINUOSITY_KM = 3.0
 
+# Nodes closer together than this collapse into one. OSM splits a highway at
+# every change of tagging, so junctions are routinely surrounded by stubs a few
+# metres long. Those stubs are artefacts of how the road is *drawn*, not
+# separate links, and each one left in place is a degree-1 node hanging off the
+# graph. Deleting them instead of merging them would be worse still: an edge
+# carries connectivity, so dropping a 30 m link severs whatever it joined.
+DEFAULT_NODE_MERGE_METRES = 75.0
+
 # How close an OSM node must be to a seed place to *be* that place.
 DEFAULT_SNAP_RADIUS_KM = 12.0
 
@@ -264,14 +272,71 @@ def _node_name(node_id: int, anchored: dict[int, str]) -> str:
     return anchored.get(node_id) or f"n{node_id}"
 
 
+def cluster_nodes(
+    coordinates: dict[int, tuple[float, float]],
+    merge_metres: float = DEFAULT_NODE_MERGE_METRES,
+) -> dict[int, int]:
+    """Group nodes within `merge_metres` of each other; return node -> leader.
+
+    Uses union-find over a spatial grid, so only nodes in neighbouring cells are
+    ever compared and the pass stays linear in the number of nodes rather than
+    quadratic. That matters: a full NER extract carries hundreds of thousands.
+    """
+    parent: dict[int, int] = {node_id: node_id for node_id in coordinates}
+
+    def find(node_id: int) -> int:
+        root = node_id
+        while parent[root] != root:
+            root = parent[root]
+        while parent[node_id] != root:      # path compression
+            parent[node_id], node_id = root, parent[node_id]
+        return root
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            # Keep the smaller id as leader so the result is deterministic.
+            parent[max(ra, rb)] = min(ra, rb)
+
+    merge_km = merge_metres / 1000.0
+    cell = merge_km / 111.0                 # degrees, roughly, at this latitude
+
+    buckets: dict[tuple[int, int], list[int]] = defaultdict(list)
+    for node_id, (lat, lon) in coordinates.items():
+        buckets[(int(lat / cell), int(lon / cell))].append(node_id)
+
+    for (row, col), members in buckets.items():
+        neighbours: list[int] = []
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                neighbours.extend(buckets.get((row + dr, col + dc), ()))
+        for node_id in members:
+            lat, lon = coordinates[node_id]
+            for other in neighbours:
+                if other <= node_id:
+                    continue
+                other_lat, other_lon = coordinates[other]
+                if haversine_km(lat, lon, other_lat, other_lon) <= merge_km:
+                    union(node_id, other)
+
+    return {node_id: find(node_id) for node_id in coordinates}
+
+
 def build_network(
     payload: dict,
     places: dict[str, dict],
     snap_radius_km: float = DEFAULT_SNAP_RADIUS_KM,
     merge_radius_km: float = DEFAULT_MERGE_RADIUS_KM,
-    min_edge_km: float = 0.5,
+    node_merge_metres: float = DEFAULT_NODE_MERGE_METRES,
+    min_edge_km: float = 0.0,
 ) -> OsmNetwork:
-    """Full pipeline: Overpass payload in, routable network out."""
+    """Full pipeline: Overpass payload in, routable network out.
+
+    `min_edge_km` defaults to zero on purpose. Filtering short edges looks like
+    tidying and is actually destructive: an edge is the only thing carrying
+    connectivity, so dropping the stubs OSM leaves around junctions shatters the
+    graph. Short links are collapsed by `cluster_nodes` instead.
+    """
     ways = [w for w in parse_overpass(payload) if w.highway in HIGHWAY_CLASSES]
     if not ways:
         return OsmNetwork()
@@ -285,6 +350,20 @@ def build_network(
         for node_id, point in zip(way.node_ids, way.geometry):
             coordinates[node_id] = point
 
+    # Collapse coincident nodes before naming anything, so the stubs OSM leaves
+    # around junctions merge away instead of hanging off the graph.
+    leader = cluster_nodes(coordinates, node_merge_metres)
+
+    # An anchored place claims its whole cluster: if any node in the cluster is
+    # a seed place, the cluster *is* that place.
+    cluster_place: dict[int, str] = {}
+    for node_id, place_id in anchored.items():
+        cluster_place.setdefault(leader[node_id], place_id)
+
+    def name_of(node_id: int) -> str:
+        root = leader[node_id]
+        return cluster_place.get(root) or f"n{root}"
+
     # Keep only the shortest edge between any pair, so dual carriageways mapped
     # as two ways collapse into one link rather than a spurious parallel route.
     best: dict[tuple[str, str], dict] = {}
@@ -293,8 +372,8 @@ def build_network(
         if length < min_edge_km:
             continue
 
-        u = _node_name(chain.start, anchored)
-        v = _node_name(chain.end, anchored)
+        u = name_of(chain.start)
+        v = name_of(chain.end)
         if u == v:
             continue
 
@@ -320,13 +399,13 @@ def build_network(
     edges = sorted(best.values(), key=lambda e: (e["u"], e["v"]))
 
     used_nodes = {e["u"] for e in edges} | {e["v"] for e in edges}
-    reverse_anchor = {name: node_id for node_id, name in anchored.items()}
+    representative: dict[str, int] = {}
+    for node_id in coordinates:
+        representative.setdefault(name_of(node_id), node_id)
+
     nodes: dict[str, dict] = {}
     for name in sorted(used_nodes):
-        node_id = reverse_anchor.get(name)
-        if node_id is None:
-            node_id = int(name[1:])
-        lat, lon = coordinates[node_id]
+        lat, lon = coordinates[representative[name]]
         seed = places.get(name)
         nodes[name] = {
             "id": name,
