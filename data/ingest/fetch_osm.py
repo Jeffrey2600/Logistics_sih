@@ -72,8 +72,12 @@ NER_REGIONS = (
     ("Sikkim", 1791324, None),
     ("Tripura", 2026458, None),
     # West Bengal is huge and mostly irrelevant here, so it is clipped to the
-    # corridor: Siliguri up to the Sikkim border.
-    ("Siliguri Corridor (WB)", 1960177, (26.0, 87.9, 27.3, 89.2)),
+    # corridor. The eastern edge must reach the Assam border near Dhubri: NH-27
+    # leaves Siliguri and runs east through Jalpaiguri and Cooch Behar, and
+    # clipping at 89.2 severed it, stranding Siliguri and Gangtok in their own
+    # 723-node component - the corridor is the region's only land link to the
+    # rest of India, so cutting it is the one edge that must never be lost.
+    ("Siliguri Corridor (WB)", 1960177, (25.8, 87.9, 27.4, 90.0)),
 )
 
 # A state whose query keeps failing is retried as bbox tiles of this size,
@@ -121,6 +125,22 @@ def tiles(bbox: tuple[float, float, float, float],
             west = east
         south = north
     return out
+
+
+def region_bbox(relation_id: int) -> tuple[float, float, float, float]:
+    """Ask Overpass for a relation's bounding box.
+
+    Only needed when a whole-area query has to be retried piecewise. Fetching it
+    beats hardcoding nine bounding boxes that would silently rot as boundaries
+    are re-drawn.
+    """
+    payload = run_query(f"[out:json][timeout:60];rel({relation_id});out bb;")
+    for element in payload.get("elements", []):
+        bounds = element.get("bounds")
+        if bounds:
+            return (bounds["minlat"], bounds["minlon"],
+                    bounds["maxlat"], bounds["maxlon"])
+    raise SystemExit(f"Could not read a bounding box for relation {relation_id}")
 
 
 def run_query(query: str) -> dict:
@@ -180,17 +200,27 @@ def download(classes: tuple[str, ...], regions=NER_REGIONS) -> dict:
         try:
             payload = run_query(build_query(classes, relation_id, bbox))
             ways = [e for e in payload.get("elements", []) if e.get("type") == "way"]
-        except SystemExit:
-            # One state too big for the mirror is not a reason to lose the rest:
-            # retry it as tiles clipped to the same area.
-            area = bbox or (NER_BBOX["south"], NER_BBOX["west"],
-                            NER_BBOX["north"], NER_BBOX["east"])
+            if not ways:
+                # An area query that resolves to nothing returns HTTP 200 with an
+                # empty element list, so a state can vanish from the network in
+                # total silence. Tripura did exactly that on the first full run.
+                raise SystemExit(f"{name} returned no ways")
+        except SystemExit as exc:
+            # One state failing is not a reason to lose the rest: retry it
+            # piecewise, still clipped to the same administrative area so the
+            # tiles never leak across a national border.
+            area = bbox or region_bbox(relation_id)
             grid = tiles(area)
-            print(f"{label}: too large; retrying as {len(grid)} tiles", flush=True)
-            ways = []
+            print(f"{label}: {exc}; retrying as {len(grid)} tiles", flush=True)
+            seen: dict[int, dict] = {}
             for sub in grid:
                 payload = run_query(build_query(classes, relation_id, sub))
-                ways.extend(e for e in payload.get("elements", []) if e.get("type") == "way")
+                for element in payload.get("elements", []):
+                    if element.get("type") == "way":
+                        seen[element["id"]] = element
+            ways = list(seen.values())
+            if not ways:
+                raise SystemExit(f"{name}: no ways even after tiling") from exc
 
         fresh = sum(1 for w in ways if w["id"] not in merged)
         for way in ways:

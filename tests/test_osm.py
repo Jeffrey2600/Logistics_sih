@@ -600,3 +600,73 @@ def test_merging_keeps_the_graph_connected(payload, places):
 def test_stubs_do_not_become_self_loops(payload, places):
     network = build_network(payload, places)
     assert all(edge["u"] != edge["v"] for edge in network.edges)
+
+
+def test_an_empty_region_is_a_failure_not_an_empty_state(monkeypatch):
+    """A flaky mirror can answer an area query with HTTP 200 and no elements.
+    Tripura vanished from the first full run exactly that way, in silence."""
+    fetch_osm = _fetch_osm()
+    calls = {"n": 0}
+
+    def responder(query):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"elements": []}                       # the silent failure
+        if "out bb" in query:
+            return {"elements": [{"bounds": {"minlat": 23.0, "minlon": 91.0,
+                                             "maxlat": 24.0, "maxlon": 92.0}}]}
+        return {"elements": [{"type": "way", "id": calls["n"]}]}
+
+    monkeypatch.setattr(fetch_osm, "run_query", responder)
+    merged = fetch_osm.download(("trunk",), regions=(("Tripura", 2026458, None),))
+    assert merged["elements"], "an empty region must trigger the tiled retry"
+
+
+def test_a_region_still_empty_after_tiling_fails_loudly(monkeypatch):
+    fetch_osm = _fetch_osm()
+
+    def responder(query):
+        if "out bb" in query:
+            return {"elements": [{"bounds": {"minlat": 23.0, "minlon": 91.0,
+                                             "maxlat": 24.0, "maxlon": 92.0}}]}
+        return {"elements": []}
+
+    monkeypatch.setattr(fetch_osm, "run_query", responder)
+    with pytest.raises(SystemExit, match="no ways even after tiling"):
+        fetch_osm.download(("trunk",), regions=(("Tripura", 2026458, None),))
+
+
+def test_region_bbox_is_read_from_overpass(monkeypatch):
+    fetch_osm = _fetch_osm()
+    monkeypatch.setattr(fetch_osm, "run_query", lambda _q: {
+        "elements": [{"bounds": {"minlat": 23.0, "minlon": 91.0,
+                                 "maxlat": 24.6, "maxlon": 92.4}}]})
+    assert fetch_osm.region_bbox(2026458) == (23.0, 91.0, 24.6, 92.4)
+
+
+def test_the_siliguri_corridor_reaches_the_assam_border():
+    """NH-27 leaves Siliguri and runs east through Cooch Behar into Assam.
+    Clipping short of that severs the region's only land link to India."""
+    fetch_osm = _fetch_osm()
+    _name, _rel, bbox = next(r for r in fetch_osm.NER_REGIONS if "Siliguri" in r[0])
+    assert bbox[3] >= 89.9, "corridor clipped before the Assam border"
+    assert bbox[1] <= 88.0, "corridor must include Siliguri itself"
+
+
+def test_tiled_retry_deduplicates_ways_across_tiles(monkeypatch):
+    """A way spanning two tiles comes back from both."""
+    fetch_osm = _fetch_osm()
+    calls = {"n": 0}
+
+    def responder(query):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"elements": []}
+        if "out bb" in query:
+            return {"elements": [{"bounds": {"minlat": 23.0, "minlon": 91.0,
+                                             "maxlat": 26.0, "maxlon": 94.0}}]}
+        return {"elements": [{"type": "way", "id": 42}]}   # same way every tile
+
+    monkeypatch.setattr(fetch_osm, "run_query", responder)
+    merged = fetch_osm.download(("trunk",), regions=(("Assam", 1, None),))
+    assert [w["id"] for w in merged["elements"]] == [42]
