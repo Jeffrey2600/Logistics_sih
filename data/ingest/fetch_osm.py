@@ -29,6 +29,7 @@ import argparse
 import csv
 import json
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -42,56 +43,162 @@ from osm import (  # noqa: E402
     build_network, degree_histogram, largest_component,
 )
 
-# Mirrors, tried in order. The main instance is the most rate-limited.
+# Mirrors, tried in order. Kumi is first because it is the most tolerant of
+# large extracts; the main instance rate-limits hardest.
 OVERPASS_ENDPOINTS = (
-    "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
 )
+
+# 504s from an Overpass mirror are routine and transient - the same query
+# succeeds seconds later - so each mirror is retried before moving on.
+ATTEMPTS_PER_MIRROR = 3
+
+# Query by administrative area, not by bounding box. The NER envelope also
+# contains all of Bangladesh, most of Bhutan and a slice of Myanmar; pulling
+# those is both far slower and wrong, because their roads would appear to the
+# optimiser as usable freight corridors when the borders are closed to through
+# traffic. OSM relation ids for the eight NE states, plus the sliver of West
+# Bengal that carries the Siliguri Corridor - the region's only land link to
+# the rest of India, so it has to be in the model.
+NER_REGIONS = (
+    ("Arunachal Pradesh", 2027346, None),
+    ("Assam", 2025886, None),
+    ("Manipur", 2027869, None),
+    ("Meghalaya", 2027521, None),
+    ("Mizoram", 2029046, None),
+    ("Nagaland", 2027973, None),
+    ("Sikkim", 1791324, None),
+    ("Tripura", 2026458, None),
+    # West Bengal is huge and mostly irrelevant here, so it is clipped to the
+    # corridor: Siliguri up to the Sikkim border.
+    ("Siliguri Corridor (WB)", 1960177, (26.0, 87.9, 27.3, 89.2)),
+)
+
+# A state whose query keeps failing is retried as bbox tiles of this size,
+# clipped to the state area. Assam and Arunachal are large enough to time out
+# on a free mirror in one go.
+FALLBACK_TILE_DEGREES = 1.5
 
 MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 
 
-def build_query(classes: tuple[str, ...], timeout: int = 900) -> str:
-    """Overpass QL for every highway of the given classes in the NER bbox.
+def build_query(classes: tuple[str, ...], relation_id: int,
+                bbox: tuple[float, float, float, float] | None = None,
+                timeout: int = 600) -> str:
+    """Overpass QL for every highway of the given classes inside one state.
 
     `out body geom` is required, not just `geom`: the node ids identify shared
     junctions between ways, and the geometry gives the traced length. Without
     the ids the network cannot be assembled at all.
     """
-    bbox = f"{NER_BBOX['south']},{NER_BBOX['west']},{NER_BBOX['north']},{NER_BBOX['east']}"
     pattern = "|".join(classes)
+    clip = ""
+    if bbox:
+        south, west, north, east = bbox
+        clip = f"({south},{west},{north},{east})"
     return (
         f"[out:json][timeout:{timeout}];\n"
-        f'way["highway"~"^({pattern})$"]({bbox});\n'
+        f"rel({relation_id}); map_to_area->.a;\n"
+        f'way(area.a)["highway"~"^({pattern})$"]{clip};\n'
         f"out body geom;"
     )
 
 
-def download(query: str) -> dict:
-    """POST the query to each mirror in turn."""
+def tiles(bbox: tuple[float, float, float, float],
+          step: float = FALLBACK_TILE_DEGREES) -> list[tuple[float, float, float, float]]:
+    """Split a bounding box into a grid, for retrying a state piecewise."""
+    south0, west0, north0, east0 = bbox
+    out = []
+    south = south0
+    while south < north0:
+        north = min(south + step, north0)
+        west = west0
+        while west < east0:
+            east = min(west + step, east0)
+            out.append((round(south, 4), round(west, 4), round(north, 4), round(east, 4)))
+            west = east
+        south = north
+    return out
+
+
+def run_query(query: str) -> dict:
+    """POST one query, retrying each mirror before moving to the next.
+
+    Overpass signals some failures inside an HTTP 200 by attaching a `remark`
+    rather than an error status, so a payload carrying one is treated as a
+    failure - otherwise a silently truncated extract becomes a silently
+    truncated road network.
+    """
+    import urllib.request
+
     body = ("data=" + query).encode()
     last: Exception | None = None
-    for endpoint in OVERPASS_ENDPOINTS:
-        print(f"Querying {endpoint}…", flush=True)
-        try:
-            import urllib.request
 
-            request = urllib.request.Request(
-                endpoint, data=body,
-                headers={"Content-Type": "application/x-www-form-urlencoded",
-                         "User-Agent": "SIH26002-NER-Logistics/0.1"},
-            )
-            with urllib.request.urlopen(request, timeout=960) as response:
-                return json.loads(response.read())
-        except Exception as exc:  # noqa: BLE001 - any failure means try the next mirror
-            print(f"  failed: {exc}", file=sys.stderr)
-            last = exc
+    for endpoint in OVERPASS_ENDPOINTS:
+        for attempt in range(1, ATTEMPTS_PER_MIRROR + 1):
+            try:
+                request = urllib.request.Request(
+                    endpoint, data=body,
+                    headers={"Content-Type": "application/x-www-form-urlencoded",
+                             "User-Agent": "SIH26002-NER-Logistics/0.1"},
+                )
+                with urllib.request.urlopen(request, timeout=900) as response:
+                    payload = json.loads(response.read())
+                remark = payload.get("remark")
+                if remark:
+                    raise RuntimeError(f"Overpass remark: {remark}")
+                return payload
+            except Exception as exc:  # noqa: BLE001 - retry, then fail over
+                last = exc
+                if attempt < ATTEMPTS_PER_MIRROR:
+                    delay = 5 * attempt
+                    print(f"    {type(exc).__name__}; retry {attempt} in {delay}s",
+                          file=sys.stderr, flush=True)
+                    time.sleep(delay)
+        print(f"    giving up on {endpoint}", file=sys.stderr, flush=True)
+
     raise SystemExit(
         f"Every Overpass mirror failed (last: {last}).\n"
-        "Download the query result on an unrestricted network and re-run with "
-        "--from-file. The query is printed above --dry-run."
+        "Download the query results on an unrestricted network and re-run with "
+        "--from-file. Print the queries with --dry-run."
     )
+
+
+def download(classes: tuple[str, ...], regions=NER_REGIONS) -> dict:
+    """Fetch each state in turn and merge, deduplicating by way id.
+
+    Ways crossing a state boundary come back from both states, identically, so
+    keying on the OSM way id is enough to merge them.
+    """
+    print(f"Fetching {len(regions)} regions…")
+    merged: dict[int, dict] = {}
+
+    for index, (name, relation_id, bbox) in enumerate(regions, 1):
+        label = f"  [{index}/{len(regions)}] {name}"
+        try:
+            payload = run_query(build_query(classes, relation_id, bbox))
+            ways = [e for e in payload.get("elements", []) if e.get("type") == "way"]
+        except SystemExit:
+            # One state too big for the mirror is not a reason to lose the rest:
+            # retry it as tiles clipped to the same area.
+            area = bbox or (NER_BBOX["south"], NER_BBOX["west"],
+                            NER_BBOX["north"], NER_BBOX["east"])
+            grid = tiles(area)
+            print(f"{label}: too large; retrying as {len(grid)} tiles", flush=True)
+            ways = []
+            for sub in grid:
+                payload = run_query(build_query(classes, relation_id, sub))
+                ways.extend(e for e in payload.get("elements", []) if e.get("type") == "way")
+
+        fresh = sum(1 for w in ways if w["id"] not in merged)
+        for way in ways:
+            merged[way["id"]] = way
+        print(f"{label}: {len(ways):>6} ways ({fresh:>6} new, "
+              f"{len(merged):>7} total)", flush=True)
+
+    return {"elements": list(merged.values())}
 
 
 def extend_rainfall(nodes: dict, places: dict) -> list[dict]:
@@ -148,15 +255,28 @@ def main() -> None:
                         help="how close an OSM node must be to a seed place to be it")
     parser.add_argument("--merge-km", type=float, default=DEFAULT_MERGE_RADIUS_KM,
                         help="collapse all OSM nodes within this distance of a seed place")
+    parser.add_argument("--only", help="comma-separated region names to fetch")
     parser.add_argument("--dry-run", action="store_true",
-                        help="print the Overpass query and exit")
+                        help="print the Overpass queries and exit")
     args = parser.parse_args()
 
     classes = tuple(c.strip() for c in args.classes.split(",") if c.strip())
-    query = build_query(classes)
+
+    regions = NER_REGIONS
+    if args.only:
+        wanted = {name.strip().lower() for name in args.only.split(",")}
+        regions = tuple(r for r in NER_REGIONS if r[0].lower() in wanted)
+        if not regions:
+            raise SystemExit(
+                "No region matched --only. Available: "
+                + ", ".join(r[0] for r in NER_REGIONS)
+            )
 
     if args.dry_run:
-        print(query)
+        for name, relation_id, bbox in regions:
+            print(f"# {name}")
+            print(build_query(classes, relation_id, bbox))
+            print("---")
         return
 
     ensure_dirs()
@@ -166,7 +286,7 @@ def main() -> None:
         payload = json.loads(args.from_file.read_text())
         print(f"Loaded {args.from_file} ({len(payload.get('elements', []))} elements)")
     else:
-        payload = download(query)
+        payload = download(classes, regions)
         raw_path.write_text(json.dumps(payload))
         print(f"Wrote {raw_path} ({len(payload.get('elements', []))} elements)")
 

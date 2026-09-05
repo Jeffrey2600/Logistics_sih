@@ -393,3 +393,133 @@ def test_degree_histogram_counts_every_endpoint(payload, places):
 def test_largest_component_is_a_subset_of_the_nodes(payload, places):
     network = build_network(payload, places)
     assert largest_component(network) <= set(network.nodes)
+
+
+# ------------------------------------------------- region queries (Overpass) --
+
+def _fetch_osm():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "data" / "ingest"))
+    import fetch_osm
+
+    return fetch_osm
+
+
+def test_every_region_has_a_relation_id():
+    fetch_osm = _fetch_osm()
+    assert len(fetch_osm.NER_REGIONS) == 9, "eight NE states plus the Siliguri Corridor"
+    for name, relation_id, bbox in fetch_osm.NER_REGIONS:
+        assert name and isinstance(relation_id, int) and relation_id > 0
+        assert bbox is None or len(bbox) == 4
+
+
+def test_query_is_scoped_to_an_area_not_a_bounding_box():
+    """A bbox over the NER also covers Bangladesh, Bhutan and part of Myanmar,
+    whose roads would read as usable freight corridors across closed borders."""
+    fetch_osm = _fetch_osm()
+    query = fetch_osm.build_query(("trunk",), 2027521)
+    assert "map_to_area" in query
+    assert "way(area.a)" in query
+    assert "out body geom;" in query, "node ids are needed to find junctions"
+
+
+def test_west_bengal_is_clipped_to_the_corridor():
+    """Un-clipped, West Bengal would drag in Kolkata and most of the state."""
+    fetch_osm = _fetch_osm()
+    name, relation_id, bbox = next(
+        r for r in fetch_osm.NER_REGIONS if "Siliguri" in r[0]
+    )
+    assert bbox is not None
+    query = fetch_osm.build_query(("trunk",), relation_id, bbox)
+    assert f"({bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]})" in query
+
+
+def test_class_filter_is_a_bounded_alternation():
+    fetch_osm = _fetch_osm()
+    query = fetch_osm.build_query(("trunk", "primary"), 1)
+    assert '"highway"~"^(trunk|primary)$"' in query
+
+
+def test_fallback_tiles_cover_the_whole_box_without_gaps():
+    fetch_osm = _fetch_osm()
+    box = (25.0, 90.0, 27.0, 93.0)
+    grid = fetch_osm.tiles(box, step=1.0)
+    assert grid
+    assert min(t[0] for t in grid) == box[0]
+    assert min(t[1] for t in grid) == box[1]
+    assert max(t[2] for t in grid) == box[2]
+    assert max(t[3] for t in grid) == box[3]
+    area = sum((t[2] - t[0]) * (t[3] - t[1]) for t in grid)
+    assert area == pytest.approx((box[2] - box[0]) * (box[3] - box[1]), rel=1e-6)
+
+
+def test_an_overpass_remark_is_treated_as_failure(monkeypatch):
+    """Overpass signals truncation inside an HTTP 200. Accepting it would turn a
+    truncated extract into a silently truncated road network."""
+    fetch_osm = _fetch_osm()
+    import urllib.request
+
+    class FakeResponse:
+        def read(self):
+            return b'{"elements": [], "remark": "runtime error: Query timed out"}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(fetch_osm.time, "sleep", lambda _s: None)
+
+    with pytest.raises(SystemExit, match="Overpass mirror failed"):
+        fetch_osm.run_query("irrelevant")
+
+
+def test_a_valid_payload_is_returned(monkeypatch):
+    fetch_osm = _fetch_osm()
+    import urllib.request
+
+    class FakeResponse:
+        def read(self):
+            return b'{"elements": [{"type": "way", "id": 1}]}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: FakeResponse())
+    assert fetch_osm.run_query("q")["elements"][0]["id"] == 1
+
+
+def test_download_merges_regions_and_deduplicates_border_ways(monkeypatch):
+    """A way crossing a state line comes back from both states, identically."""
+    fetch_osm = _fetch_osm()
+    responses = [
+        {"elements": [{"type": "way", "id": 1}, {"type": "way", "id": 2}]},
+        {"elements": [{"type": "way", "id": 2}, {"type": "way", "id": 3}]},
+    ]
+    monkeypatch.setattr(fetch_osm, "run_query", lambda _q: responses.pop(0))
+
+    merged = fetch_osm.download(("trunk",), regions=(("A", 1, None), ("B", 2, None)))
+    assert sorted(w["id"] for w in merged["elements"]) == [1, 2, 3]
+
+
+def test_a_region_too_large_falls_back_to_tiles(monkeypatch):
+    """One oversized state must not cost us the other eight."""
+    fetch_osm = _fetch_osm()
+    calls = {"n": 0}
+
+    def flaky(query):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise SystemExit("too big")
+        return {"elements": [{"type": "way", "id": calls["n"]}]}
+
+    monkeypatch.setattr(fetch_osm, "run_query", flaky)
+    merged = fetch_osm.download(
+        ("trunk",), regions=(("Assam", 1, (25.0, 90.0, 26.0, 91.0)),)
+    )
+    assert calls["n"] > 1, "expected a tiled retry"
+    assert merged["elements"]

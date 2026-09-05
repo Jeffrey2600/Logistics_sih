@@ -86,7 +86,7 @@ places and 78 multimodal segments ships in `data/seed/`, and the rainfall
 climatology is committed. It runs offline, on a fresh clone, immediately.
 
 ```bash
-python -m pytest tests -q     # 127 tests
+python -m pytest tests -q     # 136 tests
 ```
 
 ## Deployment
@@ -105,8 +105,8 @@ every data layer still renders with no internet at all.
 |---|---|---|
 | Seed network (46 places, 78 segments) | Hand-built from NH/NFR/NW-2 alignments | Committed |
 | Monthly rainfall climatology | NASA POWER (free, no key) | **Fetched and committed** |
-| Landslide occurrences | NASA COOLR / Global Landslide Catalog | Fetcher written, **not yet run** — host blocked from the build sandbox |
-| Road network at scale | OpenStreetMap via Overpass | Pipeline built and tested; download unverified — Overpass blocked from the build sandbox |
+| Landslide occurrences | NASA COOLR / Global Landslide Catalog | Fetcher written, **not yet run** — host still blocked (see `docs/NETWORK_ACCESS.md`) |
+| Road network at scale | OpenStreetMap via Overpass | Pipeline built and tested; download reachable via the Kumi mirror (see `docs/NETWORK_ACCESS.md`) |
 
 ```bash
 python data/ingest/fetch_rainfall.py       # verified working
@@ -138,6 +138,13 @@ Two decisions carry most of the weight:
   Anchoring only the nearest one leaves the rest as junctions metres away and
   fragments the graph at exactly the places the model cares most about, so
   everything within `--merge-km` collapses into the place.
+
+Queries are scoped to the nine administrative areas — the eight NE states plus
+the Siliguri Corridor sliver of West Bengal — rather than a bounding box. The
+NER envelope also contains all of Bangladesh, most of Bhutan and a slice of
+Myanmar, and pulling those is not just slower: their roads would read to the
+optimiser as usable freight corridors across borders that are closed to
+through traffic.
 
 Because Overpass mirrors rate-limit hard and are often unreachable, the
 download is a thin isolated layer and everything else takes a saved response:
@@ -219,5 +226,5 @@ data/ingest/
   fetch_landslides.py  NASA COOLR, snapped to segments
   build_training_set.py
 ml/landslide/          model training
-tests/                 127 tests
+tests/                 136 tests
 ```
