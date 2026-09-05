@@ -134,3 +134,77 @@ def test_underserved_is_ranked_worst_first_among_settlements(july):
     scores = [row["accessibility_score"] for row in july["underserved"]]
     assert scores == sorted(scores)
     assert all(row["is_settlement"] and row["reachable"] for row in july["underserved"])
+
+
+def test_siting_reports_settlements_population_and_coverage(network, risk_model):
+    result = facility_impact(network, risk_model, candidate_ids=["KHM", "TWG"],
+                             facility_type="coldstore", threshold_hours=10)
+    assert result["ranked_by"] == "settlements_newly_covered"
+    assert 0.0 <= result["population_coverage"] <= 1.0
+    for site in result["ranked_sites"]:
+        assert "settlements_newly_covered" in site
+        assert "population_newly_covered" in site
+
+
+def test_siting_is_ranked_by_settlements_not_population(risk_model):
+    """OSM tags population on a minority of villages, so ranking on population
+    ranks where contributors filled in a number. On the real network this
+    reversed the recommendation: the top site by population reached 79
+    settlements, the top site by settlements reached 155."""
+    from backend.app.core.network import Network, Place
+
+    def village(pid, lat, population=0):
+        return Place(id=pid, name=pid, state="", lat=lat, lon=92.0, kind="village",
+                     population=population, has_market=False, has_coldstore=False)
+
+    places = {"HUB": Place(id="HUB", name="Hub", state="", lat=26.0, lon=92.0,
+                           kind="city", population=0,
+                           has_market=True, has_coldstore=True)}
+    # A: three untagged villages. B: one village with a large tagged population.
+    for i in range(3):
+        places[f"A{i}"] = village(f"A{i}", 26.10 + i * 0.01)
+    places["B0"] = village("B0", 25.90, population=90000)
+    for pid in ("A0", "A1", "A2", "B0"):
+        places[pid] = places[pid]
+
+    edges = []
+    for pid in ("A0", "A1", "A2", "B0"):
+        edges.append({
+            "id": f"HUB-{pid}-road", "u": "HUB", "v": pid, "mode": "road",
+            "distance_km": 300.0, "terrain": "plain", "route_ref": "NH",
+            "lanes": 2, "monsoon_exposure": 0.3, "landslide_events": 0,
+        })
+    # Candidate sites sit beside each cluster.
+    net = Network(places=places, edges=edges)
+
+    result = facility_impact(net, risk_model, candidate_ids=["A0", "B0"],
+                             facility_type="coldstore", threshold_hours=6)
+    ranked = result["ranked_sites"]
+    assert ranked[0]["settlements_newly_covered"] >= ranked[1]["settlements_newly_covered"]
+
+
+def test_siting_ignores_junctions(risk_model):
+    """A cold store does not serve a motorway interchange."""
+    from backend.app.core.network import Network, Place
+
+    places = {
+        "HUB": Place(id="HUB", name="Hub", state="", lat=26.0, lon=92.0, kind="city",
+                     population=1000, has_market=True, has_coldstore=True),
+        "n1": Place(id="n1", name="n1", state="", lat=26.05, lon=92.0, kind="junction",
+                    population=0, has_market=False, has_coldstore=False),
+        "v1": Place(id="v1", name="Village", state="", lat=26.1, lon=92.0, kind="village",
+                    population=500, has_market=False, has_coldstore=False),
+    }
+    edges = [
+        {"id": "HUB-n1-road", "u": "HUB", "v": "n1", "mode": "road", "distance_km": 5.0,
+         "terrain": "plain", "route_ref": "NH", "lanes": 2,
+         "monsoon_exposure": 0.3, "landslide_events": 0},
+        {"id": "n1-v1-road", "u": "n1", "v": "v1", "mode": "road", "distance_km": 5.0,
+         "terrain": "plain", "route_ref": "NH", "lanes": 2,
+         "monsoon_exposure": 0.3, "landslide_events": 0},
+    ]
+    result = facility_impact(Network(places=places, edges=edges), risk_model,
+                             candidate_ids=["v1"], facility_type="coldstore",
+                             threshold_hours=24)
+    # Only HUB and v1 are settlements, so coverage can never exceed two.
+    assert result["baseline_settlements_covered"] <= 2

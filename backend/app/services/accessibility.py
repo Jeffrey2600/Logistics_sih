@@ -197,13 +197,25 @@ def facility_impact(
 
     baseline = accessibility_index(network, risk_model, month=month)
     key = f"hours_to_{facility_type}"
-    base_rows = {r["id"]: r for r in baseline["places"]}
-    base_mean = sum(r["accessibility_score"] for r in baseline["places"]) / len(base_rows)
-    base_covered = sum(
-        r["population"]
-        for r in baseline["places"]
-        if r[key] is not None and r[key] <= threshold_hours
-    )
+
+    # Score settlements only: a road junction is not somewhere a cold store
+    # serves, and counting junctions would reward siting next to a motorway
+    # interchange in the middle of nowhere.
+    base_rows = {r["id"]: r for r in baseline["places"] if r["is_settlement"]}
+    base_mean = sum(r["accessibility_score"] for r in base_rows.values()) / max(len(base_rows), 1)
+
+    def covered(rows):
+        return [r for r in rows if r[key] is not None and r[key] <= threshold_hours]
+
+    base_covered_rows = covered(base_rows.values())
+    base_population = sum(r["population"] for r in base_covered_rows)
+    base_settlements = len(base_covered_rows)
+
+    # How much of the population figure is actually evidenced. OSM tags
+    # population on a minority of villages, so a population-only ranking is
+    # really a ranking of where contributors filled in a number.
+    tagged = sum(1 for r in base_rows.values() if r["population"] > 0)
+    population_coverage = tagged / max(len(base_rows), 1)
 
     results = []
     for candidate in candidate_ids:
@@ -216,14 +228,10 @@ def facility_impact(
             else {"extra_coldstores": {candidate}}
         )
         after = accessibility_index(network, risk_model, month=month, **kwargs)
-        after_rows = {r["id"]: r for r in after["places"]}
+        after_rows = {r["id"]: r for r in after["places"] if r["is_settlement"]}
 
-        covered = sum(
-            r["population"]
-            for r in after["places"]
-            if r[key] is not None and r[key] <= threshold_hours
-        )
-        mean_score = sum(r["accessibility_score"] for r in after["places"]) / len(after_rows)
+        after_covered = covered(after_rows.values())
+        mean_score = sum(r["accessibility_score"] for r in after_rows.values()) / max(len(after_rows), 1)
 
         newly = [
             {
@@ -233,30 +241,36 @@ def facility_impact(
                 "hours_before": base_rows[r["id"]][key],
                 "hours_after": r[key],
             }
-            for r in after["places"]
-            if r[key] is not None
-            and r[key] <= threshold_hours
+            for r in after_covered
+            if r["id"] in base_rows
             and (base_rows[r["id"]][key] is None or base_rows[r["id"]][key] > threshold_hours)
         ]
 
         results.append(
             {
                 "site": network.places[candidate].to_dict(),
-                "population_newly_covered": covered - base_covered,
-                "places_newly_covered": sorted(
-                    newly, key=lambda x: -x["population"]
-                ),
+                # Settlements reached is the primary measure: it is unbiased by
+                # how patchily OSM records population.
+                "settlements_newly_covered": len(after_covered) - base_settlements,
+                "population_newly_covered": sum(r["population"] for r in after_covered)
+                - base_population,
+                "places_newly_covered": sorted(newly, key=lambda x: -x["population"])[:50],
                 "mean_score_before": round(base_mean, 2),
                 "mean_score_after": round(mean_score, 2),
                 "mean_score_gain": round(mean_score - base_mean, 2),
             }
         )
 
-    results.sort(key=lambda r: (-r["population_newly_covered"], -r["mean_score_gain"]))
+    results.sort(key=lambda r: (-r["settlements_newly_covered"], -r["mean_score_gain"]))
     return {
         "facility_type": facility_type,
         "month": month,
         "threshold_hours": threshold_hours,
-        "baseline_population_covered": base_covered,
+        "baseline_settlements_covered": base_settlements,
+        "baseline_population_covered": base_population,
+        # Read the population figures against this. At low coverage they say
+        # more about OSM tagging than about where people live.
+        "population_coverage": round(population_coverage, 3),
+        "ranked_by": "settlements_newly_covered",
         "ranked_sites": results,
     }

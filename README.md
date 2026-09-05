@@ -104,7 +104,7 @@ fresh clone runs offline and immediately — rebuilding the OSM network would
 otherwise mean a 10-15 minute walk over rate-limited Overpass mirrors.
 
 ```bash
-python -m pytest tests -q     # 154 tests
+python -m pytest tests -q     # 191 tests
 ```
 
 ## Deployment
@@ -124,7 +124,8 @@ every data layer still renders with no internet at all.
 | Seed network (46 places, 78 segments) | Hand-built from NH/NFR/NW-2 alignments | Committed |
 | Monthly rainfall climatology | NASA POWER (free, no key) | **Fetched and committed** |
 | Landslide occurrences | NASA COOLR / Global Landslide Catalog | Fetcher written, **not yet run** — host still blocked (see `docs/NETWORK_ACCESS.md`) |
-| Road network at scale | OpenStreetMap via Overpass | **Built** — 14,531 ways over the nine regions, 6,502 nodes, 25,360 km, 98% connected, all 46 seed places anchored |
+| Road network at scale | OpenStreetMap via Overpass | **Built** — 14,531 ways, 6,502 nodes, 25,360 km, 98% connected, all 46 seed places anchored |
+| Populated places | OpenStreetMap via Overpass | **Built** — 6,568 named settlements; 5,609 in the network, 399 further than 20 km from any mapped road |
 
 ```bash
 python data/ingest/fetch_rainfall.py       # verified working
@@ -217,18 +218,22 @@ These are real, and stating them is better than being asked about them.
    Every rate, speed and penalty lives in `backend/app/config.py` with a source
    note, so a surveyed number can replace an assumed one without touching the
    algorithms.
-4. **Settlements, not villages.** The OSM network is built — 6,502 nodes and
-   25,360 km of road — but almost all of those nodes are road junctions. The
-   only *settlements* in the model are still the 46 seed places, so the
-   accessibility ranking covers 46 towns however large the road graph gets.
-   Village-level results need a populated-places layer (OSM `place=village`,
-   or the Census village directory) joined onto the network. Until then the
-   road geometry is real and the settlement coverage is not.
-5. **Performance is adequate, not tuned.** Against the OSM network a route
-   takes about 3 s and the accessibility index about 6 s, because both rebuild
-   the mode-layered graph per request. That is fine for a demo and would need
-   caching for anything busier.
-6. **Accessibility is scored at nodes, not over a population surface.** Proper
+4. **Population data is 15% complete, and that is the biggest caveat here.**
+   OSM records a population tag on only 837 of 5,609 settlements. Ranking
+   anything by population therefore ranks where contributors happened to fill
+   in a number, not where people live — on the real network that reversed the
+   cold-store recommendation, so facility siting ranks by *settlements reached*
+   and reports `population_coverage` alongside every population figure. Joining
+   the Census 2011 village directory would fix this properly.
+5. **399 settlements are more than 20 km from any mapped road.** They are
+   reported rather than dropped, because the honest reading is ambiguous:
+   either the place is genuinely that remote, or OSM has no road there. Both
+   matter to MDoNER, and telling them apart needs ground truth.
+6. **Performance is adequate, not tuned.** The accessibility index over 10,572
+   nodes takes about 16 s cold and 1.1 s warm, because the layered graph is
+   cached per (month, weights, modes, closures). A first request after startup
+   is slow; everything after it is not.
+7. **Accessibility is scored at nodes, not over a population surface.** Proper
    spatial equity work would use a WorldPop raster and travel-time isochrones.
 
 ## Layout
@@ -250,10 +255,12 @@ frontend/              dashboard: no build step, MapLibre vendored
 data/seed/             the committed network
 data/ingest/
   osm.py               OSM topology: parsing, contraction, classification
+  places.py            settlement parsing and the last-mile road join
   fetch_osm.py         Overpass CLI, with an offline --from-file path
+  fetch_places.py      populated-places CLI
   fetch_rainfall.py    NASA POWER climatology
   fetch_landslides.py  NASA COOLR, snapped to segments
   build_training_set.py
 ml/landslide/          model training
-tests/                 154 tests
+tests/                 191 tests
 ```
