@@ -20,6 +20,18 @@ const RISK_LABEL = { low: "Usually open", elevated: "Often disrupted", severe: "
 // The server bands the combined figure; the map may be showing one hazard.
 const bandOf = (p) => (p < 0.15 ? "low" : p < 0.35 ? "elevated" : "severe");
 
+// A band the palette does not know must never reach MapLibre as undefined: it
+// paints those black, which is not in the legend and reads as a fourth
+// category. This happened for real when the server's band names changed and a
+// browser was still running a cached older script.
+function riskColour(band) {
+  const colour = RISK_COLOUR[band];
+  if (colour) return colour;
+  console.warn(`unknown risk band "${band}" - the page and the API disagree; ` +
+               "reload with Ctrl+Shift+R");
+  return "#9aa4ad";   // neutral grey, visibly "unknown" rather than severe
+}
+
 function floodNote(model) {
   if (!model || !model.available) {
     return `<p class="note">Flood risk is not included: elevation data has not
@@ -408,7 +420,7 @@ function drawItinerary(itinerary) {
       geometry: { type: "LineString", coordinates: line },
       properties: {
         mode: leg.mode,
-        colour: MODE_COLOUR[leg.mode],
+        colour: MODE_COLOUR[leg.mode] || "#9aa4ad",
         popup: `<strong>${esc(leg.from_name)} → ${esc(leg.to_name)}</strong><br>
                 ${esc(leg.mode)} · ${esc(leg.route_ref)} · ${leg.distance_km} km<br>
                 ${fmtH(leg.hours)} · ${fmtRs(leg.cost_per_tonne)}/t<br>
@@ -488,7 +500,7 @@ async function drawRisk() {
     type: "Feature",
     geometry: { type: "LineString", coordinates: s.geometry },
     properties: {
-      colour: RISK_COLOUR[bandOf(riskOf(s))],
+      colour: riskColour(bandOf(riskOf(s))),
       widthScale: RISK_WIDTH[bandOf(riskOf(s))] ?? 1,
       popup: `<strong>${esc(s.label)}</strong><br>
               ${esc(s.mode)} · ${esc(s.route_ref)} · ${esc(s.terrain)} · ${s.distance_km} km<br>

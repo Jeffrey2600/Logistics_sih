@@ -122,3 +122,23 @@ def test_risk_bands_are_the_three_validated_ones(client):
     body = client.get("/network/segments?month=jul").json()
     bands = {s["risk"]["band"] for s in body["segments"]}
     assert bands <= {"low", "elevated", "severe"}
+
+
+def test_the_frontend_palette_covers_every_band_the_api_returns(client):
+    """A band the page's palette does not know reaches MapLibre as undefined,
+    which it paints black - a colour absent from the legend that reads as a
+    fourth severity. This is the check that would have caught it."""
+    import re
+    from pathlib import Path
+
+    app_js = (Path(__file__).resolve().parents[1] / "frontend" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(r"const RISK_COLOUR = \{([^}]*)\}", app_js)
+    assert match, "RISK_COLOUR not found in frontend/app.js"
+    palette = set(re.findall(r"(\w+):", match.group(1)))
+
+    served = {s["risk"]["band"] for s in client.get("/network/segments?month=jul").json()["segments"]}
+    assert served <= palette, (
+        f"the API returns bands the dashboard cannot colour: {sorted(served - palette)}"
+    )
