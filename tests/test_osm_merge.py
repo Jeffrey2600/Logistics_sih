@@ -169,7 +169,7 @@ def test_built_osm_csv_matches_the_loader_schema(tmp_path):
 # --------------------------------------------------------- settlements -----
 
 def write(path, rows, fields):
-    with path.open("w", newline="") as fh:
+    with path.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)

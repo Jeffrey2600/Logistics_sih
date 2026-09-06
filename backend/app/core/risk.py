@@ -179,7 +179,7 @@ def load_risk_model() -> RiskModel:
         import joblib
 
         model = joblib.load(model_path)
-        meta = json.loads(meta_path.read_text())
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
         return LearnedRiskModel(model, meta["feature_order"], analytic)
     except Exception:
         # A broken artefact must never take the API down.

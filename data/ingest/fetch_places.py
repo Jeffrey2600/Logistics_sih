@@ -109,7 +109,7 @@ def load_network_nodes() -> dict[str, tuple[float, float]]:
             f"{NETWORK_NODES} not found. Build the road network first:\n"
             "  python data/ingest/fetch_osm.py"
         )
-    with NETWORK_NODES.open() as fh:
+    with NETWORK_NODES.open(encoding="utf-8") as fh:
         return {r["id"]: (float(r["lat"]), float(r["lon"])) for r in csv.DictReader(fh)}
 
 
@@ -142,11 +142,11 @@ def main() -> None:
     raw_path = RAW_DIR / "osm_places.json"
 
     if args.from_file:
-        payload = json.loads(args.from_file.read_text())
+        payload = json.loads(args.from_file.read_text(encoding="utf-8"))
         print(f"Loaded {args.from_file}")
     else:
         payload = download(regions)
-        raw_path.write_text(json.dumps(payload))
+        raw_path.write_text(json.dumps(payload), encoding="utf-8")
         print(f"Wrote {raw_path} ({len(payload['elements'])} elements)")
 
     settlements = parse_places(payload)
@@ -161,10 +161,14 @@ def main() -> None:
     # every table. Assign the state of the nearest seed town: crude near a
     # border, right almost everywhere else, and far better than empty.
     seed = [p for p in load_seed_places().values()]
-    for node in nodes:
+
+    def state_for(lat: float, lon: float) -> str:
         nearest = min(seed, key=lambda p: haversine_km(
-            node["lat"], node["lon"], float(p["lat"]), float(p["lon"])))
-        node["state"] = nearest["state"]
+            lat, lon, float(p["lat"]), float(p["lon"])))
+        return nearest["state"]
+
+    for node in nodes:
+        node["state"] = state_for(node["lat"], node["lon"])
 
     known = sum(1 for s in settlements if s.population_known)
     print(f"  attached as new nodes:  {len(nodes)}")
@@ -185,9 +189,10 @@ def main() -> None:
     write_csv(
         PROCESSED_DIR / "settlement_merges.csv",
         [{"node_id": node_id, "name": s.name, "kind": s.place_type,
+          "state": state_for(s.lat, s.lon),
           "population": s.population, "population_known": int(s.population_known)}
          for node_id, s in sorted(merges.items())],
-        ["node_id", "name", "kind", "population", "population_known"],
+        ["node_id", "name", "kind", "state", "population", "population_known"],
     )
     print(f"\nWrote settlement_nodes.csv, settlement_edges.csv and "
           f"settlement_merges.csv to {PROCESSED_DIR}")

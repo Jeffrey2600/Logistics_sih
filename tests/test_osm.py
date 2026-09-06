@@ -682,9 +682,9 @@ def test_merge_raw_tops_up_the_cached_payload(tmp_path, monkeypatch):
     raw.write_text(json.dumps({"elements": [
         {"type": "way", "id": 1, "tags": {"highway": "trunk"}},
         {"type": "way", "id": 2, "tags": {"highway": "trunk"}},
-    ]}))
+    ]}), encoding="utf-8")
 
-    cached = json.loads(raw.read_text())
+    cached = json.loads(raw.read_text(encoding="utf-8"))
     merged = {e["id"]: e for e in cached["elements"] if e["type"] == "way"}
     for element in [{"type": "way", "id": 2, "tags": {"highway": "primary"}},
                     {"type": "way", "id": 3, "tags": {"highway": "trunk"}}]:

@@ -54,7 +54,7 @@ def load_rows(path: Path) -> list[dict]:
             "Build it with data/ingest/build_training_set.py, or run with "
             "--bootstrap to smoke-test the pipeline on synthetic labels."
         )
-    with path.open() as fh:
+    with path.open(encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
 
 
@@ -174,7 +174,8 @@ def main() -> None:
                 "synthetic": args.bootstrap,
             },
             indent=2,
-        )
+        ),
+        encoding="utf-8",
     )
     print(f"wrote {MODEL_PATH.name} and {META_PATH.name}")
     if args.bootstrap:

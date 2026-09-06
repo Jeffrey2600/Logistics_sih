@@ -144,7 +144,7 @@ OSM_DEFAULT_MONSOON_EXPOSURE = 0.45
 
 def _read_places(path: Path) -> dict[str, Place]:
     places: dict[str, Place] = {}
-    with path.open() as fh:
+    with path.open(encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             places[row["id"]] = Place(
                 id=row["id"],
@@ -162,7 +162,7 @@ def _read_places(path: Path) -> dict[str, Place]:
 
 def _read_edges(path: Path, places: dict[str, Place], defaults: dict) -> list[dict]:
     edges: list[dict] = []
-    with path.open() as fh:
+    with path.open(encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             if row["u"] not in places or row["v"] not in places:
                 raise ValueError(f"edge references unknown place: {row['u']}->{row['v']}")
@@ -227,7 +227,7 @@ def merge_settlements(net: Network, protected_ids: set[str]) -> Network:
             places[place_id] = place
 
     if SETTLEMENT_MERGES.exists():
-        with SETTLEMENT_MERGES.open() as fh:
+        with SETTLEMENT_MERGES.open(encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 node_id = row["node_id"]
                 existing = places.get(node_id)
@@ -237,7 +237,9 @@ def merge_settlements(net: Network, protected_ids: set[str]) -> Network:
                 places[node_id] = Place(
                     id=node_id,
                     name=row["name"],
-                    state=existing.state,
+                    # A junction has no state; the settlement that merged into
+                    # it does, so prefer that and fall back only if absent.
+                    state=row.get("state") or existing.state,
                     lat=existing.lat,
                     lon=existing.lon,
                     kind=row["kind"],

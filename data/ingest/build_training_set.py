@@ -103,7 +103,7 @@ def main() -> None:
             f"{raw_path} not found. Run data/ingest/fetch_landslides.py first."
         )
 
-    points = json.loads(raw_path.read_text())
+    points = json.loads(raw_path.read_text(encoding="utf-8"))
     places, edges = load_seed_places(), load_seed_edges()
     hits = events_by_segment_month(points, places, edges)
 
@@ -132,7 +132,7 @@ def main() -> None:
             })
 
     out_path = PROCESSED_DIR / "disruption_training.csv"
-    with out_path.open("w", newline="") as fh:
+    with out_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)

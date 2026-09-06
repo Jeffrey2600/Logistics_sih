@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from .api.deps import get_network, get_risk_model
@@ -56,9 +57,28 @@ def health():
     }
 
 
+class NoCacheStatic(StaticFiles):
+    """Serve the dashboard without browser caching.
+
+    The page is three files that must agree with each other. A browser holding
+    a cached app.js against a freshly pulled index.html gets a page whose
+    controls never populate, with no error to explain it - which is exactly
+    what a stale cache produced after an update. The files are small and served
+    from the same process, so re-fetching them costs nothing worth saving.
+    """
+
+    def is_not_modified(self, *args, **kwargs) -> bool:
+        return False
+
+    async def get_response(self, path: str, scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+        return response
+
+
 # The dashboard is static files with no build step, served from the same
 # process as the API. One free-tier service, one origin, no CORS in practice.
 # Mounted last so it never shadows an API route.
 FRONTEND_DIR = BASE_DIR / "frontend"
 if FRONTEND_DIR.is_dir():
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="dashboard")
+    app.mount("/", NoCacheStatic(directory=FRONTEND_DIR, html=True), name="dashboard")

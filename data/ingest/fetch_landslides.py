@@ -117,16 +117,16 @@ def main() -> None:
     raw_path = RAW_DIR / "landslides_ner.json"
 
     if args.cache and raw_path.exists():
-        points = json.loads(raw_path.read_text())
+        points = json.loads(raw_path.read_text(encoding="utf-8"))
         print(f"Using cached {raw_path.name} ({len(points)} points)")
     else:
         points = download()
-        raw_path.write_text(json.dumps(points, indent=1))
+        raw_path.write_text(json.dumps(points, indent=1), encoding="utf-8")
         print(f"Wrote {raw_path} ({len(points)} points)")
 
     rows = snap(points, load_seed_places(), load_seed_edges())
     out_path = PROCESSED_DIR / "segment_landslides.csv"
-    with out_path.open("w", newline="") as fh:
+    with out_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=["segment_id", "landslide_events", "nearest_km"])
         writer.writeheader()
         writer.writerows(rows)

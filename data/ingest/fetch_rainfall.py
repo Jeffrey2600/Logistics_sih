@@ -78,7 +78,7 @@ def main() -> None:
 
     out_path = PROCESSED_DIR / "place_rainfall.csv"
     fields = ["place_id", "name"] + MONTHS + [f"index_{m}" for m in MONTHS]
-    with out_path.open("w", newline="") as fh:
+    with out_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)

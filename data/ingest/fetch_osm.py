@@ -245,7 +245,7 @@ def extend_rainfall(nodes: dict, places: dict) -> list[dict]:
         print("  no place_rainfall.csv; skipping rainfall extension")
         return []
 
-    with source.open() as fh:
+    with source.open(encoding="utf-8") as fh:
         seed_rain = {row["place_id"]: row for row in csv.DictReader(fh)}
 
     rows = []
@@ -269,7 +269,7 @@ def extend_rainfall(nodes: dict, places: dict) -> list[dict]:
 
 
 def write_csv(path: Path, rows: list[dict], fields: list[str]) -> None:
-    with path.open("w", newline="") as fh:
+    with path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
@@ -318,7 +318,7 @@ def main() -> None:
     raw_path = RAW_DIR / "osm_ner.json"
 
     if args.from_file:
-        payload = json.loads(args.from_file.read_text())
+        payload = json.loads(args.from_file.read_text(encoding="utf-8"))
         print(f"Loaded {args.from_file} ({len(payload.get('elements', []))} elements)")
     else:
         payload = download(classes, regions)
@@ -326,7 +326,7 @@ def main() -> None:
             # Free Overpass mirrors rate-limit hard, and a full walk is a lot to
             # repeat for the sake of one missing state. Topping up the cached
             # payload keeps a costly successful download useful.
-            cached = json.loads(raw_path.read_text())
+            cached = json.loads(raw_path.read_text(encoding="utf-8"))
             merged = {
                 e["id"]: e for e in cached.get("elements", [])
                 if e.get("type") == "way"
@@ -337,7 +337,7 @@ def main() -> None:
                     merged[element["id"]] = element
             payload = {"elements": list(merged.values())}
             print(f"Merged into cached payload: {before} -> {len(merged)} ways")
-        raw_path.write_text(json.dumps(payload))
+        raw_path.write_text(json.dumps(payload), encoding="utf-8")
         print(f"Wrote {raw_path} ({len(payload.get('elements', []))} elements)")
 
     places = load_seed_places()

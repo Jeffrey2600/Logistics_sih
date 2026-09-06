@@ -116,7 +116,7 @@ def load_network_nodes() -> dict[str, tuple[float, float]]:
     for path in (NETWORK_NODES, SETTLEMENT_NODES):
         if not path.exists():
             continue
-        with path.open() as fh:
+        with path.open(encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 nodes[row["id"]] = (float(row["lat"]), float(row["lon"]))
     if not nodes:
@@ -151,11 +151,11 @@ def main() -> None:
     raw_path = RAW_DIR / "osm_markets.json"
 
     if args.from_file:
-        payload = json.loads(args.from_file.read_text())
+        payload = json.loads(args.from_file.read_text(encoding="utf-8"))
         print(f"Loaded {args.from_file}")
     else:
         payload = download(regions)
-        raw_path.write_text(json.dumps(payload))
+        raw_path.write_text(json.dumps(payload), encoding="utf-8")
         print(f"Wrote {raw_path} ({len(payload['elements'])} elements)")
 
     network = load_network_nodes()

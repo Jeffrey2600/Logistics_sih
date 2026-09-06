@@ -26,7 +26,7 @@ def _read(path) -> dict[str, dict[str, float]]:
     if not path.exists():
         return {}
     try:
-        with path.open() as fh:
+        with path.open(encoding="utf-8") as fh:
             return {
                 row["place_id"]: {
                     month: float(row[f"index_{month}"]) for month in SEASON_RAIN_INDEX

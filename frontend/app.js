@@ -284,7 +284,8 @@ async function boot() {
   // meaningfully - "n4021632273" is not somewhere anyone ships from.
   const { places } = await api("/network/places?settlements_only=true");
   places.forEach((p) => (state.places[p.id] = p));
-  const options = places.map((p) => [p.id, `${p.name} — ${p.state}`]);
+  // Not every settlement carries a state; a bare "Name —" reads as a bug.
+  const options = places.map((p) => [p.id, p.state ? `${p.name} — ${p.state}` : p.name]);
 
   fillSelect($("origin"), options, "KHM");
   fillSelect($("destination"), options, "GAU");
@@ -652,6 +653,20 @@ for (const key of ["Cost", "Time", "Risk"]) {
   $("w" + key).oninput = (e) => ($("w" + key + "L").textContent = (+e.target.value).toFixed(2));
 }
 
+function fatal(message) {
+  const banner = document.createElement("div");
+  banner.className = "error";
+  banner.style.margin = "12px 16px";
+  banner.innerHTML =
+    `<strong>The dashboard could not start.</strong><br>${esc(message)}<br><br>` +
+    `Check the terminal running <code>run.sh</code> / <code>run.ps1</code>, then ` +
+    `reload with <b>Ctrl+Shift+R</b>.`;
+  $("sidebar").insertBefore(banner, $("sidebar").children[2]);
+}
+
 boot().catch((error) => {
-  $("routeResult").innerHTML = `<div class="error">Could not reach the API: ${esc(error.message)}</div>`;
+  // Empty dropdowns with no explanation is the worst possible failure mode:
+  // it looks like the app, only broken. Say what happened, at the top.
+  fatal(error.message);
+  console.error(error);
 });

@@ -94,12 +94,12 @@ def point_to_segment_km(
 def load_seed_places() -> dict[str, dict]:
     import csv
 
-    with (SEED_DIR / "nodes.csv").open() as fh:
+    with (SEED_DIR / "nodes.csv").open(encoding="utf-8") as fh:
         return {row["id"]: row for row in csv.DictReader(fh)}
 
 
 def load_seed_edges() -> list[dict]:
     import csv
 
-    with (SEED_DIR / "edges.csv").open() as fh:
+    with (SEED_DIR / "edges.csv").open(encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
