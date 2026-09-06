@@ -227,10 +227,23 @@ function chipRow(container, values, set, onChange) {
   }
 }
 
-function buildCandidatePicker(places) {
+function buildCandidatePicker(allPlaces) {
   const search = $("candidateSearch");
   const list = $("candidateList");
   const chosen = $("candidateChosen");
+
+  // A town can appear twice: once as a curated seed place and once as the OSM
+  // settlement node sitting near it. Offering both is confusing and the seed
+  // entry is the better one - it carries population, market and cold-store
+  // data that a bare OSM node does not.
+  const byName = new Map();
+  for (const place of allPlaces) {
+    const key = `${place.name.toLowerCase()}|${place.state.toLowerCase()}`;
+    const existing = byName.get(key);
+    const isSeed = !place.id.startsWith("s");
+    if (!existing || (isSeed && existing.id.startsWith("s"))) byName.set(key, place);
+  }
+  const places = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 
   const render = () => {
     const q = search.value.trim().toLowerCase();
@@ -582,7 +595,9 @@ async function evaluateSites() {
       },
     })));
     fitTo(data.ranked_sites.map((r) => [r.site.lon, r.site.lat]));
-    legend("Population newly covered", [["rgb(46,160,67)", "most"], ["rgb(248,81,73)", "least"]]);
+    legend("Places brought within reach",
+           [["rgb(25,158,112)", "Helps most"], ["rgb(208,59,59)", "Helps least"]],
+           "Ranked by how many towns and villages come within the chosen travel time.");
 
     // Ranked by settlements reached, so that is the leading column. Population
     // is shown next to it with its coverage stated, because OSM records a
