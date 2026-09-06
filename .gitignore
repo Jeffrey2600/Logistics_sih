@@ -15,6 +15,9 @@ data/processed/*
 !data/processed/osm_nodes.csv
 !data/processed/osm_edges.csv
 !data/processed/osm_rainfall.csv
+!data/processed/settlement_nodes.csv
+!data/processed/settlement_edges.csv
+!data/processed/settlement_merges.csv
 !data/processed/.gitkeep
 ml/landslide/model.joblib
 ml/landslide/model_meta.json

@@ -1,0 +1,1525 @@
+node_id,name,kind,population,population_known
+AGT,Krishna Nagar,suburb,0,0
+AZL,Aizawl,city,291822,1
+CCP,Bungmual,village,4500,1
+CHP,Zotlang,village,0,0
+DBG,Dibrugarh,city,140000,1
+DPU,Diphu,town,0,0
+GAU,Jyotikuchi,suburb,0,0
+GLG,Golaghat,city,60782,1
+GTK,Gangtok,city,100300,1
+HFL,Retzol,village,0,0
+IMP,Imphal,city,500000,1
+ITN,Doni Colony,village,0,0
+JGP,Jogighopa,village,0,0
+JWI,Jowai,town,5000,1
+KHM,Phesama,village,0,0
+KRJ,Karimganj,town,0,0
+LGL,Theriat,village,0,0
+LMD,Lumding,town,31347,1
+MKG,Mokokchung,town,35913,1
+NGN,Nagaon,city,117700,1
+NHL,Naharlagun,town,0,0
+NLK,North Lakhimpur,town,50000,1
+NMS,Nongkham,village,0,0
+SLG,Matigara,suburb,0,0
+TSK,Tinsukia,town,10000,1
+TUR,Tura,town,5000,1
+TWG,Famla,village,0,0
+TZP,Tezpur,town,5000,1
+UDP,Udaipur,town,37781,1
+WKH,Wokha,town,35004,1
+ZRO,Silyo,hamlet,0,0
+n10106865512,Billbari,hamlet,0,0
+n10155070562,Tinalingaon,village,0,0
+n10264865634,Koijam Maring,village,0,0
+n10265667796,Chaobok,town,0,0
+n10316679681,Gandacherra,town,10000,1
+n10536208468,Sagarpar,hamlet,0,0
+n10536208546,Buranga,hamlet,0,0
+n10557043312,Nawājisnagar,hamlet,0,0
+n10558774212,Anglabazar,hamlet,0,0
+n10564426749,Thamua,hamlet,0,0
+n10572259747,Lalpool,village,0,0
+n10845972370,Nafra,town,0,0
+n10867319160,Bumdirla,hamlet,0,0
+n10892870784,Gohpur,town,0,0
+n10972380780,Tsiemekhuma Basa,village,0,0
+n11032046977,Karbook,village,0,0
+n1118544427,Pecharthal,village,0,0
+n1118544750,Panisagar,town,0,0
+n1118584799,Khongsai Veng,suburb,0,0
+n1118729593,Changliang,village,0,0
+n1118732509,Laxmi Nagar,village,0,0
+n1132321938,Kalchini,town,1000,1
+n1132376303,Sukna Cantonment,suburb,0,0
+n1132413540,Changrabandha,suburb,0,0
+n1133013618,Galgalia,village,0,0
+n1133695009,Malou Pahar,village,0,0
+n1133695888,Bargolai,hamlet,0,0
+n11357444667,Howraghat,village,0,0
+n11511548232,吴旁,hamlet,0,0
+n11665421894,Baghbor,village,0,0
+n11829398739,Bagrakote,village,0,0
+n1185178063,Yangse,village,0,0
+n11871412310,Banchukamari,hamlet,0,0
+n11887138344,Sherfanguri,village,0,0
+n11917706361,Kajalgaon,town,0,0
+n11926973525,Mānikpur,hamlet,0,0
+n11926976110,Pānbāri,hamlet,0,0
+n11926976685,Bānduguri,hamlet,0,0
+n11935315896,Garubhāsa,village,0,0
+n11982707862,Jalukbari,suburb,0,0
+n12051472955,Kātāligaon,hamlet,0,0
+n12072966690,Kheraikuchi,suburb,0,0
+n12083846937,Dibong (Singpho Village),village,0,0
+n12086064850,Islampur,village,0,0
+n12086238930,Tālpātāgaon,hamlet,0,0
+n12097804860,Sāpekhāti,hamlet,0,0
+n12118121182,Khutākata,hamlet,0,0
+n12128302701,Charāibāhi,hamlet,0,0
+n12128302717,Gariāgaon,hamlet,0,0
+n12133486640,Hollogaon,hamlet,0,0
+n12188885953,Neepco Colony,hamlet,0,0
+n12195811774,Molko,hamlet,0,0
+n12216993186,Tibong,hamlet,0,0
+n12269691195,Dhalchhara,hamlet,0,0
+n12269700094,Dhalchhara,hamlet,0,0
+n12269716950,Dhalchhara,hamlet,0,0
+n12302763205,Kabairbond,hamlet,0,0
+n12335680310,Lakhipur,hamlet,0,0
+n12398775095,Billibari,hamlet,0,0
+n12398783654,Raghurtuk,hamlet,0,0
+n12398805010,Tukerbazar,hamlet,0,0
+n12398816121,Isaganj,hamlet,0,0
+n12398876999,Borchahaki,village,0,0
+n12434556965,Thinghlun,hamlet,0,0
+n12466572652,Holongi,village,0,0
+n12466597220,Rajgorh,village,0,0
+n12527860812,Dāoblibdīsa,hamlet,0,0
+n1262084753,Betasing,village,0,0
+n1262084969,Mendipathar,village,0,0
+n1262085299,Singrimari,village,5000,1
+n1296579094,Jairampur,town,0,0
+n1296579156,Nampong,village,0,0
+n1296579735,Namchik,village,0,0
+n1296596611,Kamba,village,0,0
+n1296646659,Badharghat,suburb,0,0
+n1296646810,Kunjaban,suburb,0,0
+n1296647009,Radha Nagar,suburb,0,0
+n1299581260,Paltan Bazar,suburb,0,0
+n13002309297,Āmbāri,hamlet,0,0
+n1313341337,Biprit,hamlet,0,0
+n1313341345,Baniatol,hamlet,0,0
+n1313342221,Paschim Mankadanga,village,1011,1
+n1313342222,Kundargoan,village,3306,1
+n1313342838,Garnabari,village,224,1
+n1313342998,Ghoramara,village,0,0
+n1313343204,Deshbandhu Para,suburb,0,0
+n1313343219,Matikunda,village,4529,1
+n1313343221,Nanchankula,village,1700,1
+n1313343280,Islampur,town,54340,1
+n1313343282,Uttar Tuthipakar,village,529,1
+n1313343361,Mela Math,suburb,0,0
+n1313388957,Gunjaria,village,4470,1
+n1313388981,Aliganj,village,0,0
+n1313388993,Adhibasipara,hamlet,0,0
+n1313389013,State Farm Colony,suburb,0,0
+n1313389015,Illuabari,village,3921,1
+n1313389031,Srikrishnapur,suburb,0,0
+n1313389047,Dohaso,village,13323,1
+n1313389180,Manikpur,village,3980,1
+n1313389184,Ramganj,village,0,0
+n1313389707,Dakshin Dhamargachh,village,0,0
+n1313568860,Ghospukur,village,0,0
+n1313569066,Phansidewa Hat,village,1000,1
+n1313569273,Sitaguri,village,0,0
+n1314432919,Tindharia,village,0,0
+n1315563843,Siliguri,city,1572000,1
+n1323790772,Phulbari,suburb,0,0
+n1329755609,Darugiri,village,0,0
+n1329756251,Dambo Rongjeng,village,0,0
+n1329759680,Dudhnai,town,5000,1
+n1344230878,Pankhabari,village,0,0
+n1344373928,Mirik,town,0,0
+n1345435465,Dudhia,village,0,0
+n1345697449,Maynaguri,town,30490,1
+n1345697589,Lataguri,village,0,0
+n1345697825,Dhupguri,town,0,0
+n1345733537,Gayerkata,village,0,0
+n1346388174,Pātiladaha,hamlet,0,0
+n1346388230,North Salmara,village,0,0
+n1346434848,Patacharkuchi,village,0,0
+n1347032651,Charāikhola,hamlet,0,0
+n1347032657,Kokrajhar,town,0,0
+n1347487501,Hamiltonganj,town,0,0
+n1347487512,Dakshin Chakoakheti,hamlet,0,0
+n1347487530,Rajabhatkhawa,village,0,0
+n1347704800,Jayanti,village,0,0
+n1347750879,Kamakhyaguri,town,0,0
+n1347750931,Rasik Bil,hamlet,0,0
+n1347751300,Kumargram,village,0,0
+n1347779394,Laskarpara,suburb,0,0
+n1348237444,Paren,village,0,0
+n1348237595,Menglass Tea Garden,village,0,0
+n1348237707,Jhalong,village,0,0
+n1349065775,Baneshwar,village,0,0
+n1349065959,Birpara,hamlet,0,0
+n1349326438,Koch Bihar,city,106760,1
+n1351480932,Goreswar,town,0,0
+n1351480961,Naokata,village,0,0
+n13525786506,B. Munpi,village,110,1
+n1354934707,Bilasipara,town,0,0
+n1354934773,Phutkibari,village,0,0
+n1355287719,Dotma,village,0,0
+n1355674134,Bāsugaon,village,0,0
+n1355674645,New Bongaigon,suburb,0,0
+n1356726182,Molcham,village,815,1
+n1359960908,Khunamukh,village,0,0
+n1359960948,Chutia,village,0,0
+n1359960956,Jamugurihat,village,0,0
+n1359961074,Bishwanath Charaili,town,0,0
+n1364340436,Ananda Nagar,suburb,0,0
+n1364588635,Rukimininagar,suburb,0,0
+n1364608047,Hengrabari,suburb,0,0
+n13780340168,Malangi Tea Garden,village,0,0
+n1403967946,Pathsala,town,0,0
+n1404298037,Miao,town,0,0
+n1412092843,Dangra Dangri,village,0,0
+n1412092943,Fatehabad,village,0,0
+n1425144163,Khangshim,village,0,0
+n1425144171,Kakching,town,0,0
+n1425144199,Uchiwa,village,3783,1
+n1425144202,Mayang Imphal,village,0,0
+n1435225985,Seren,village,0,0
+n1435440731,Sisi Bargaon,village,5000,1
+n1435440734,Likabali,village,0,0
+n1437216069,巴麦,village,0,0
+n1449670767,Lautisi,hamlet,0,0
+n1463090962,Yabab,hamlet,0,0
+n1463091034,Thirlam,hamlet,0,0
+n1463091929,Sirdi,village,0,0
+n1472750636,Salema,village,0,0
+n1477924176,Sangkalang,village,0,0
+n1477987346,Melli Bāzār,suburb,0,0
+n1477987372,Phong,village,0,0
+n1495287202,Borhowa,hamlet,0,0
+n1495483960,Gingia,village,0,0
+n1516328259,Khowai,town,0,0
+n1596351004,Rabindrapur,village,0,0
+n1596351205,Panitanki,town,0,0
+n1600752221,Kajoli,village,0,0
+n1600752242,Bura Mayang,village,0,0
+n1600752246,মায়ং,village,0,0
+n1621474344,Sonapur,village,2320,1
+n1621474935,Dudpatil,suburb,0,0
+n1621474982,Pānigrām,hamlet,0,0
+n1636922907,Kāsomārigaon,village,0,0
+n1668477077,Borghat,village,0,0
+n1668477348,Rupahi,village,0,0
+n1668496656,Rangapara,town,0,0
+n1676604100,Harmutigaon,village,0,0
+n1676938852,Simaluguri,village,0,0
+n1676939136,Chengdharagaon,hamlet,0,0
+n1676939158,Rajgarh Chariali,village,0,0
+n1676939159,Borkhola,suburb,0,0
+n1676970400,Mandia,village,0,0
+n1683315334,Kyangsala,village,0,0
+n1683573506,Lengpui,town,0,0
+n1692786572,Nirjuli,suburb,0,0
+n1696836975,Yupia,village,0,0
+n1698245595,Pan Bazar,suburb,0,0
+n1698434486,Chitre basti,village,0,0
+n1698434919,Tenga,village,0,0
+n1698495015,Rupa,town,0,0
+n1698495570,Salari,village,0,0
+n1699645897,Romdum,village,0,0
+n1699645904,Mebo,town,0,0
+n1699646033,Silluk,village,0,0
+n1699646116,博马科,village,0,0
+n1699697363,Aohali Pobleng,village,0,0
+n1699697456,Dambuk,town,0,0
+n1722857685,Lamshang,village,0,0
+n1722857700,Kharang Koireng,village,1303,1
+n1722857719,Kharam Thadoi,hamlet,159,1
+n1722857757,Kanto,village,977,1
+n1722857778,Leimakhong,town,3544,1
+n1722857858,Khunkhu Naga,village,798,1
+n1786434999,Rupaichhari,village,0,0
+n1795605123,Siaha,town,5000,1
+n1795712208,Tuipang,town,0,0
+n1795712455,Tisi,village,0,0
+n1795719080,Seling,village,0,0
+n1802870518,Tirap,suburb,0,0
+n1810911611,Bishwanath Ghat,village,0,0
+n1811241144,Moreh,town,15000,1
+n1811322234,Marigaon,town,5000,1
+n1811322236,Kamalabari,suburb,0,0
+n1811322239,Kahibari,town,0,0
+n1811322261,Tamulibari,village,0,0
+n1811322293,Bhuragaon,town,0,0
+n1811322588,Dibāng Chāpari,hamlet,0,0
+n1811387541,Williamnagar,town,0,0
+n1811463215,Barangajuli,village,0,0
+n1811698417,Tufanganj,town,0,0
+n1811823755,Dewanganj,village,0,0
+n1811823832,Anguldekha,village,0,0
+n1811823845,Haldibari,town,0,0
+n1821511784,Ranaghat,hamlet,0,0
+n1848134155,Sinzawl,village,0,0
+n1848135971,Muolvaiphei,village,0,0
+n1848135982,Rengkai,town,8293,1
+n1848135992,Khumujamba Leikaii,suburb,0,0
+n1848136381,Yaingangpokpi,village,500,1
+n1848136383,Sikibung,village,1084,1
+n1848136492,Lungphu,village,776,1
+n1848137167,Lakhamai,village,4822,1
+n1848137251,Jessami,town,0,0
+n1848777309,Kaochao 'E',village,0,0
+n1848821189,Pala,village,0,0
+n1848821514,No-aotlah,village,0,0
+n1848821764,Saikao,village,0,0
+n1858242057,Bishalgarh,town,0,0
+n1880368236,Pātiladaha,hamlet,0,0
+n1880368273,Paschim Jitpur,hamlet,0,0
+n1880382265,Dakshin Kantadighi Kumarpara,village,0,0
+n1880382314,Kantadighi Kumarpara,village,0,0
+n1884960404,Malek,village,0,0
+n1884960442,Roing,town,0,0
+n1884960489,Bomjir,village,0,0
+n1939422436,Nimati,village,0,0
+n1939438876,Kumar Gaon,village,0,0
+n1939485065,Lahdoigarh,village,0,0
+n1986849200,贡岗,village,0,0
+n1987687456,Rowriah/ jail Road Area,suburb,0,0
+n1987687546,Dhalājān,hamlet,0,0
+n1987718922,Macharhat,suburb,0,0
+n1987948515,Titabor,town,0,0
+n1988646265,Chamurchi,village,0,0
+n2035724199,Pratapi Para,hamlet,0,0
+n2035724236,Bikrampur,hamlet,0,0
+n2035724347,Kirishanpur,hamlet,0,0
+n2035724540,Tarapur,suburb,0,0
+n2051081415,Longai,hamlet,0,0
+n2081914303,Algapur,village,0,0
+n2081914312,Masimpur,village,0,0
+n2081914809,Badarpur,town,0,0
+n2081915069,Garerband,hamlet,0,0
+n2081915097,Barākhola,hamlet,0,0
+n2081966204,Laisong,village,0,0
+n2083680172,Bairabi,town,0,0
+n2084596680,Teikhang,village,0,0
+n2084597038,Tuilaphai,village,0,0
+n2084597051,Mahou,village,0,0
+n2084597071,Wangoo,village,9148,1
+n2084597157,Island,village,0,0
+n2084597158,Nungourok,village,0,0
+n2084597259,Ankhasuo,village,1841,1
+n2084597265,Durgapur,village,434,1
+n2084597284,Jakuradhor Part-1,village,1486,1
+n2084597288,Guakhal,village,824,1
+n2084597292,Borobekra,village,741,1
+n2084597301,Chotobekra,village,1345,1
+n2084663067,Sibong,village,0,0
+n2084663102,Jouzangtek,village,391,1
+n2084663524,Jampi,village,0,0
+n2084663528,Middle Katang,hamlet,0,0
+n2084692474,Siangai Namkao,village,0,0
+n2084692480,K. Hengmol,village,0,0
+n2084692485,L. Thingphai,village,189,1
+n2084692486,Pinjang Gangluan Part IV,village,0,0
+n2084692489,Gangluan,village,0,0
+n2084877550,Nihokhu,village,0,0
+n2084878568,Rengmapani,village,0,0
+n2084956655,Kilo Old,village,0,0
+n2084973724,Kongan,village,0,0
+n2084974154,Santak,town,0,0
+n2088368073,Banarhat,village,0,0
+n2164024456,Udalguri,town,0,0
+n2164024493,Mazbat,town,0,0
+n2164024546,Khairabari,village,0,0
+n2164024625,Bhairab Kund,village,0,0
+n2164024770,巴勒姆,village,0,0
+n2164275096,Majarbari Ghat,village,0,0
+n2164879904,Tsiesema Bawe,village,0,0
+n2305178803,Mangaldoi,town,25000,1
+n2305975495,Mikirbheta,village,0,0
+n2306119598,Missamari,suburb,0,0
+n2308253319,Chunpura Gohāigaon,hamlet,0,0
+n2309538309,Khimtāi,hamlet,0,0
+n2309770355,Mirigaon,hamlet,0,0
+n2314868582,Joypur,village,2491,1
+n2314935071,Donangiaon,hamlet,0,0
+n2314935116,Namrup,town,0,0
+n2314935270,Phaltan Basti,village,0,0
+n2314935278,Tipam Phake,village,0,0
+n2316320019,Mariani,town,5000,1
+n2316320757,Furkating,village,0,0
+n2316321086,MOINAPARA,suburb,0,0
+n2317301700,Gogamukh,town,0,0
+n2319239248,Hathidhura,hamlet,0,0
+n2328077755,Ghagra,hamlet,0,0
+n2328235641,Telam Bédum,village,0,0
+n2328235647,Lakhipur Bédum,village,0,0
+n2328371496,Ratan,village,0,0
+n2328371994,Bagiāelengi Satra,hamlet,0,0
+n2329496025,Barpathar,town,0,0
+n2329587358,Ranthali,village,0,0
+n2329587597,Dhing,town,0,0
+n2333029618,Rajbhawan,suburb,0,0
+n2362861928,Bangaon,hamlet,0,0
+n2364658268,Durpai,hamlet,0,0
+n2364711962,Bhawanipur,town,0,0
+n2364712076,Barpeta Road,town,0,0
+n2364712178,Jārtāluk,hamlet,0,0
+n2364712202,Sonbāri,hamlet,0,0
+n2364712245,Salbari,village,0,0
+n2364712278,Simlābāri,hamlet,0,0
+n2364712290,Subankhata,village,0,0
+n2365446798,Foskadanga,hamlet,0,0
+n2365493082,Ghograpar,village,0,0
+n2369274185,Borka,village,0,0
+n2370824950,Kamalabari,town,0,0
+n2373378856,Rongram,town,5000,1
+n2375286645,Rupkalia,hamlet,0,0
+n2375286688,Nagaon,hamlet,0,0
+n2375286699,Wokha Garanga,hamlet,0,0
+n2375286856,Barhalla,village,0,0
+n2376217264,Khāgarijān No 1,hamlet,0,0
+n2376217572,Merapani,town,0,0
+n2376218186,Kamarbandha,hamlet,0,0
+n2376219019,Kākadānga,hamlet,0,0
+n2376219107,Nām Chungi,hamlet,0,0
+n2376219198,Chungi,hamlet,0,0
+n2380444086,Māgurmāri,hamlet,0,0
+n2380445016,Kochugaon,village,0,0
+n2381336709,Patharughat,village,0,0
+n2381337775,Khairabari,town,0,0
+n2383406992,Garhmari,village,0,0
+n2383407025,Chaparmukh,village,0,0
+n2383407026,Kakati Gaon,village,0,0
+n2385333968,Kalaigaon,town,0,0
+n2385334323,Bengbari,village,0,0
+n2385334374,Paneri,village,0,0
+n2387194438,Lakhipur,town,5000,1
+n2387379080,Dīwāngaon,village,0,0
+n2387379128,Dīwāngaon,hamlet,0,0
+n2388581780,Deodia,village,0,0
+n2388581840,Kaibatra,village,0,0
+n2388582039,Jangraimukh,village,0,0
+n2388582295,Dhakuakhana,village,0,0
+n2389849093,Bihpuria,town,0,0
+n2391090266,Pānbāri,hamlet,0,0
+n2394032712,Kurijhār,village,0,0
+n2394032742,Māyangpāra,hamlet,0,0
+n2399678417,Dalāigaon,hamlet,0,0
+n2399680672,Deosri,village,0,0
+n2406555451,Disangpani,village,50000,1
+n2406555735,Bogaigāon,village,0,0
+n2406555878,Khowāng,village,0,0
+n2406832512,Chintang Saddle,village,0,0
+n2453324773,Amguri,town,0,0
+n2453465536,Hālwāting,hamlet,0,0
+n2453787921,Merangkong,village,0,0
+n2453789204,Tsudikong,town,4416,1
+n2453803866,Chuchuyimlang,village,0,0
+n2454056910,Theiva,village,0,0
+n2454064626,Amobyu Vaithie,village,0,0
+n2454469669,Saikah 'L',village,500,1
+n2454560369,Leite,village,5000,1
+n2454639707,Pangzawl,village,0,0
+n2455234815,Phaileng,village,0,0
+n2455547720,Pherzawl,village,1558,1
+n2455611820,Joutung,village,0,0
+n2455649793,Leijangphai,village,801,1
+n2455737612,Torbung,village,5139,1
+n2455737681,Ningthoukhong,village,0,0
+n2455738557,Nerhema,village,0,0
+n2455738717,Botsa,village,0,0
+n2455739363,Zunpha,village,0,0
+n2455740106,Kandinu,village,0,0
+n2455767779,Chukitong,village,0,0
+n245703196,Khopai,village,0,0
+n245712879,Serchhip,town,0,0
+n245713434,Khawzawl,town,0,0
+n245718886,Behiang,village,0,0
+n245720344,Chandel,town,0,0
+n245720793,Toupokpi,village,670,1
+n245721623,Churachandpur,town,50000,1
+n245722195,Sagang,village,5494,1
+n245722676,Kumbi,village,0,0
+n245724879,Dwarband,village,0,0
+n245725007,Moragang,village,0,0
+n245726890,Sawombung,village,0,0
+n245727350,Ngarumphung,village,400,1
+n245734694,Mairang,village,0,0
+n245734725,Mawngap,village,0,0
+n245734913,Nongstoin,town,0,0
+n245736680,Cherano,village,5000,1
+n245736763,Akhegwo,village,0,0
+n245741477,Hojai,town,0,0
+n245742040,Baghuliaghat,town,0,0
+n245746382,Merapāni,hamlet,0,0
+n245747168,Fakiragram,town,0,0
+n245749456,Dāngāpāra,hamlet,0,0
+n245749553,Dhamdhama,village,0,0
+n245750491,Mahaliapara,village,0,0
+n245751501,Bagdogra,town,0,0
+n245752909,Goibarigoan,village,0,0
+n245754786,Naryanpur,village,0,0
+n245756019,Sapekhati Chāriali,hamlet,0,0
+n245756087,Banderdeva,village,0,0
+n245756196,Niz Lakuk,town,0,0
+n245756784,Morān,town,0,0
+n245756851,Pahumara,village,0,0
+n245757368,Ghurania,hamlet,0,0
+n245758716,Digboi,town,50000,1
+n245761323,Dimow,village,2000,1
+n245764416,Along,town,0,0
+n245765431,Damroh,village,0,0
+n2458530473,Lilong Chajing,village,0,0
+n2459028343,Tellou,village,3328,1
+n2459028911,Mongkot Chepu,village,676,1
+n2459029135,Litan Sareikhong,village,1000,1
+n2459029361,Chepu Yaolen,village,325,1
+n2459029890,Ramva,village,1940,1
+n2459083045,Kalhang Khullen,village,0,0
+n2459083878,Chingjaroi Khullen,village,0,0
+n2459084757,Kharasom,village,0,0
+n2459238130,Meluri,town,0,0
+n2459390094,Yingshukur,village,0,0
+n2459392034,Waphur,village,0,0
+n2459393316,Shangpu,village,0,0
+n2459394026,Tuensang,town,0,0
+n2461541978,Manu,town,0,0
+n2461543334,Kumarghat,town,0,0
+n2461543721,Churaibari,village,0,0
+n2461559405,Ambassa,town,70000,1
+n2461590040,Jirania,village,0,0
+n2461590406,Teliamura,town,0,0
+n2461590774,Mungiakami,village,0,0
+n2461651941,Sabroom,town,0,0
+n2461652793,Manu Bazar,village,0,0
+n2461653370,Jolaibari,village,11800,1
+n2461654957,Bishramganj,town,0,0
+n2461989325,Dapchhuah,village,0,0
+n2461994318,Mamit,town,0,0
+n2462048830,Tukkaln,village,0,0
+n2462049049,Chailengta,village,0,0
+n2463170748,Tseretse,village,0,0
+n2463233843,Yukmadung,village,0,0
+n2463277084,Hawa Golai,hamlet,0,0
+n2463277836,Dirang Dzong,village,0,0
+n2463577661,Koronu,village,0,0
+n2463594556,Rottung,village,0,0
+n2463618261,Angu,village,0,0
+n2463654457,卡罗姆,village,0,0
+n2463654535,Maro,village,0,0
+n2463754150,皮衣木克,village,0,0
+n2463770993,Mudang Tage,village,0,0
+n2463790687,Chod,hamlet,0,0
+n2463790694,苏,village,0,0
+n2463790889,Yazali,town,1768,1
+n2463790943,杰特,hamlet,0,0
+n2463791557,Yachuli,town,0,0
+n2463791866,Joram,hamlet,0,0
+n2463792539,Ziro,city,0,0
+n2463824656,Jameri,hamlet,0,0
+n2463824706,New Kaspi,hamlet,0,0
+n2463837057,Seba,village,0,0
+n2463837758,Kafla,village,0,0
+n2463864246,科提普,village,0,0
+n2463864878,Sagalee,village,0,0
+n2464680891,Shantipur,village,0,0
+n2465028551,Talap,town,0,0
+n2465028612,Dangari,village,0,0
+n2465029054,Dupāani Bargaon,hamlet,0,0
+n2465087612,New Khamdu,village,0,0
+n2465087658,Lekhapani,village,0,0
+n2466195329,Chalsa,village,0,0
+n2466235144,Adugiri,village,0,0
+n2468512457,Kashibari,village,0,0
+n2468512483,Paschim Mokarandapur,village,0,0
+n2468512499,Jiakhuri,village,0,0
+n2468512506,Sonapur,village,0,0
+n2468740366,Durgāchhara,hamlet,0,0
+n2468740561,Kayāng Deshwālibasti,hamlet,0,0
+n2468742473,Wāphu,hamlet,0,0
+n2468762902,Lungkhor,hamlet,0,0
+n2468762922,Purāna Maibong,suburb,0,0
+n2468762958,Maibong,town,0,0
+n2468762970,Khāuthāmdīsa,hamlet,0,0
+n2468763133,Mupa Hojāi,hamlet,0,0
+n2469004460,Naksalbari,town,0,0
+n2469684040,Chizami,town,0,0
+n2469698539,Pfutsero Town,town,10371,1
+n2469894553,Manja,town,0,0
+n2469900718,Parkhowa Bazaar,village,0,0
+n2469900731,Dengaon,village,0,0
+n2491563762,Tuirial,hamlet,0,0
+n2491830210,Kawnpui,village,0,0
+n2491833905,'N' Thingdawl,village,0,0
+n2491876699,Lala,town,0,0
+n2491876709,Umednagar,village,0,0
+n2491877281,Hailakandi,town,0,0
+n2492599802,Bilkhawthlir,village,0,0
+n2492601704,Phāisen,hamlet,0,0
+n2498697992,Oinamlong,village,1512,1
+n2498768470,Tollen,village,116,1
+n2500948545,Tolloi,village,0,0
+n2501001558,Mata,village,2273,1
+n2501023508,Songtal,village,894,1
+n2501957487,Samanda,village,0,0
+n2501957629,Rongrengiri,village,0,0
+n2511042546,Kupup,village,0,0
+n2516678325,Āmteka,village,0,0
+n2517721615,Tamulpur,town,0,0
+n2519160722,Senu,village,0,0
+n2519223712,Sibbari,village,0,0
+n2519982799,Dulki,village,0,0
+n2520369985,Kakraban,village,0,0
+n2555555998,Tuichhama,village,0,0
+n2579670796,Dinhata,town,0,0
+n2595623022,Sessamukh,village,0,0
+n2595623108,Kalitakuchi,village,0,0
+n2632756349,Karigaon,village,0,0
+n2659517518,Mahendraganj,village,0,0
+n2666939999,Dispur,town,0,0
+n2671616321,Belonia,town,19996,1
+n2682279843,Mekuli,village,0,0
+n2682288214,Chungtia,village,0,0
+n2682774922,New Camp (Longjongkong),hamlet,0,0
+n2682968461,Longnak,hamlet,0,0
+n2682983901,Wati Yim,village,0,0
+n2682984003,Longtho,village,0,0
+n2715015195,Kinunger,village,0,0
+n2717217350,Sungratsu,village,0,0
+n2719435973,Mopungchuket,village,0,0
+n2720225720,Akuluto,village,0,0
+n2723985107,Pakyong,town,0,0
+n2764200726,Sumer Village,village,0,0
+n2774754102,Barapani,village,0,0
+n2882121034,Thadlaskein,village,0,0
+n2882121292,Mawryngkneng,village,0,0
+n2883904490,Jagun,town,0,0
+n2884021044,Baghmara,town,5000,1
+n2884022742,Rewak,village,0,0
+n2885003252,Sāpekhāti,hamlet,0,0
+n2885039421,Dhanbīl,hamlet,0,0
+n2885248532,Dakhinpat,village,0,0
+n2885250941,Nari,village,0,0
+n2914323246,Purum Chumbang,village,0,0
+n2915034573,Tizit,town,0,0
+n2915034650,Namsa,town,0,0
+n2919179868,Sherathang,village,0,0
+n2926094146,Lālābasti,hamlet,0,0
+n2926094151,Mahaārājpur,hamlet,0,0
+n2926094680,Chhota Kāpurchhara,hamlet,0,0
+n2926095072,Rekha,hamlet,0,0
+n2926096522,Kathiatoli,village,0,0
+n2926096874,Dighali Ati,village,0,0
+n2926097475,Mulankata,village,0,0
+n2926154982,Jalah,village,0,0
+n2926155032,Hajua,village,0,0
+n2926323039,Bhaitbari,village,0,0
+n2926323240,Srirampur,village,0,0
+n2926581816,Chenga,village,0,0
+n2967218994,Bara Hulung,village,0,0
+n2967219009,Philobari,hamlet,0,0
+n2967220343,Pengri Chārāli,hamlet,0,0
+n2976469237,Hnahlan,village,0,0
+n3007133833,Lumla,town,0,0
+n3007271430,Gorsam,village,103,1
+n3018172995,Bhalukpong,town,0,0
+n3018173026,Tippi Town,suburb,0,0
+n3092025659,Chapi Khithie,village,0,0
+n3158879343,Dighāli,hamlet,0,0
+n3158879810,Badripāra,hamlet,0,0
+n3158885672,Barkhala,hamlet,0,0
+n3158923546,Khoril,hamlet,0,0
+n3158923588,Kharil Bagicha,hamlet,0,0
+n3158923616,Dalu,village,0,0
+n3158933756,Dudhpatli,hamlet,0,0
+n3158934591,Gossaipur,hamlet,0,0
+n3160185171,Irongmara,village,0,0
+n3160185194,Dargākona,village,0,0
+n3160185425,Silkuri,village,0,0
+n3173460680,Phulbari,village,5000,1
+n3173469643,Tikrikila,village,5000,1
+n3173470227,Tikrikilla,town,0,0
+n3173560387,Garampāni,hamlet,0,0
+n3173560410,Phonglangso,hamlet,0,0
+n3173566127,Khorungma,hamlet,0,0
+n3173570147,Bāgha,hamlet,0,0
+n3173573097,Amardisa,hamlet,0,0
+n3173577191,Dihāngi,hamlet,0,0
+n3173578975,Dishru Village,village,0,0
+n3173657996,Zamuang,village,0,0
+n3173660337,Kanhmun,hamlet,0,0
+n3173670413,Jampuijala,village,0,0
+n3173676986,Melaghar,town,20300,1
+n3173704205,Mawsmai,hamlet,0,0
+n3175911973,恰吐姆,hamlet,0,0
+n3175912216,Tumrung,hamlet,0,0
+n3175912311,Kambang,hamlet,0,0
+n3175920440,Meer,hamlet,0,0
+n3175964719,Tapaha,hamlet,0,0
+n3175965095,Rukpu,village,0,0
+n3176031335,托库,village,0,0
+n3176043848,Kimin,town,0,0
+n3176054713,Peri,hamlet,0,0
+n3176054721,Kaying,town,0,0
+n3176055376,Kamki,village,0,0
+n3176058961,赛村,hamlet,0,0
+n3176060815,Menying,hamlet,0,0
+n3176072975,Mechuka,town,0,0
+n3178199100,Boleng,town,0,0
+n3178209387,里戛,village,0,0
+n3178213064,Jengging,village,0,0
+n3179552235,Rongli,town,0,0
+n3179658554,Yangli,village,0,0
+n3179711617,Sonari,town,0,0
+n3179713537,Bhojo,hamlet,0,0
+n3179713699,Bhojogaon,hamlet,0,0
+n3179739570,Namphai 1,village,0,0
+n3179739577,Lāklāpathār,hamlet,0,0
+n3179739747,Kharsang,town,0,0
+n3179739771,Nāmchik,hamlet,0,0
+n3179739996,New Longkey,village,0,0
+n3179740541,Lakla,village,0,0
+n3179749350,Telikola,hamlet,0,0
+n3309034382,Kachukata,village,0,0
+n3345442064,Kharibari,village,0,0
+n3393379510,Mon,town,0,0
+n342098065,Oraog,village,0,0
+n342099041,Yeksi,village,0,0
+n342099620,Balipara,village,0,0
+n3454068821,莫库新,village,0,0
+n3454846720,Tenzingang,village,0,0
+n3454892796,Samphung,hamlet,0,0
+n3455075763,Kuwarpār,village,0,0
+n3455076019,Pālanghāt,village,0,0
+n3455076051,Kalyānpur,hamlet,0,0
+n3455076087,Sachinpur,hamlet,0,0
+n3455076125,Amrāghāt,hamlet,0,0
+n3455076190,Gangānagar,hamlet,0,0
+n3455076194,Rasunpur,hamlet,0,0
+n3455076198,Matinagar,village,0,0
+n3455076235,Harinabasti,hamlet,0,0
+n3455080984,Kālāgrām,hamlet,0,0
+n3455081300,Āmjurghāt,hamlet,0,0
+n3455081322,Sonāimukh,village,0,0
+n3455081335,Sonābārighāt,hamlet,0,0
+n3455680160,若波朗钦,hamlet,0,0
+n3462002941,Paite Veng,suburb,0,0
+n3515195562,Sapatgram,town,0,0
+n3515195826,Thakthakipara,village,0,0
+n3515196190,Ushatary,village,0,0
+n3517621029,Sāpatgrām,hamlet,0,0
+n3517621214,Bhowraguri,village,0,0
+n3517621278,Patakata,village,0,0
+n3517621294,Mowamari,village,0,0
+n3517621386,Mussalmanpara,village,0,0
+n3637671405,Rowriya,village,0,0
+n3677062183,Nājirān Daoti Khāta,hamlet,0,0
+n3677614505,Mushalpur,town,0,0
+n3677615137,Barama,town,0,0
+n3677615184,Nikashi,village,0,0
+n3677615447,Bhutiachang,village,0,0
+n3677615462,Chamrang,village,0,0
+n3677644432,Lakhipur,town,0,0
+n3677676521,Uttar Saripakuri,village,0,0
+n3677676535,Uttar Mitiali,village,0,0
+n3677706509,Kranti,village,0,0
+n3677706512,Dakshin Majhgram,village,0,0
+n3677914259,Dimdima,village,0,0
+n3686971924,Teok,village,0,0
+n3687018036,Jagduwar,village,0,0
+n3701019500,Mawmluh,village,0,0
+n3701021426,Mawkisyiem,suburb,0,0
+n3701021477,Jymmang ne Mawshamok,hamlet,0,0
+n3701021502,Sohra (Cherrapunji),town,0,0
+n3701076353,Wahlong,hamlet,0,0
+n3701126642,Khanduli,village,0,0
+n3701145767,Hamren,town,0,0
+n3701159961,Donka Molām,village,0,0
+n3701162616,Tumpreng,hamlet,0,0
+n3701170423,Dhola,village,0,0
+n3701172837,Nilbāgān,village,0,0
+n3701229800,Chandkhira,village,0,0
+n3701304166,Dharmanagar,town,0,0
+n3703063529,Mankachar,town,0,0
+n3703293159,Yingkiong,town,6134,1
+n3703361224,哥布克,hamlet,0,0
+n3736220267,Six Mile,suburb,0,0
+n3798891857,Mangkolemba,town,0,0
+n3826804069,Chopra,village,0,0
+n3826804071,Chopra (CT),village,0,0
+n3826828468,Debpāra,hamlet,0,0
+n3875985762,Deomali,town,0,0
+n3875988367,Bordubi,village,0,0
+n3877609074,Elope,village,0,0
+n3877609233,Amili,village,0,0
+n3877609308,阿米里,village,0,0
+n3877610516,Ezuli,village,0,0
+n3877610763,Idipo,village,0,0
+n3877610886,Angolin,village,0,0
+n3877647577,Rengchi,hamlet,0,0
+n3877648331,Koloriang,city,0,0
+n3878443665,Lāngkri,hamlet,0,0
+n3878443853,Washobil,hamlet,0,0
+n3878444137,Kheroni,village,0,0
+n3878444772,Baitha-Langso,village,0,0
+n3878466615,Umrangso,town,10376,1
+n3879678148,Dholaikhal,village,0,0
+n3880127344,Namtok,village,0,0
+n3880129884,Bordumsa,village,0,0
+n3880272354,Jalukie,village,0,0
+n3881690528,Sowa New,village,0,0
+n3884005483,Chesezu,village,0,0
+n3884008374,Xuivi,village,0,0
+n3884084074,Vanghmun,village,1500,1
+n3884084847,Kanchanpur,village,0,0
+n3884828470,W. Phulpui,village,0,0
+n3885879576,Amarpur,town,10838,1
+n3885892152,New Eden,hamlet,0,0
+n3887833902,Aibawk,village,0,0
+n3887834495,Muallungthu,village,0,0
+n3887963792,Yairepok,village,0,0
+n3888002993,Ngariyan,village,0,0
+n3888003313,Keirao Bitra,village,0,0
+n3888044073,Kasong,village,0,0
+n3888044377,Tarong,village,0,0
+n3888045423,Kakmayai,village,0,0
+n3888169828,Sorbung,village,0,0
+n3888209284,Pedi,village,0,0
+n3888958731,Sonpram,village,0,0
+n3888960268,Tamei,village,0,0
+n3888961097,Wakothpa,hamlet,0,0
+n3888962699,Maohing Nepali,village,1613,1
+n3888964118,Selsi,hamlet,0,0
+n3889130602,Kamjong,town,0,0
+n3889161088,Yumnam Khunou,village,1870,1
+n3889161132,Sagolmang,village,967,1
+n3889161384,Sadu Koireng,village,674,1
+n3889161391,E. Mullam,village,286,1
+n3889161473,Saikul,town,2767,1
+n3889161494,Bunglung,village,562,1
+n3889161638,Lhungtin,village,0,0
+n3889161871,Molkon,village,1359,1
+n3890096756,Tiding,hamlet,0,0
+n3890097930,Lamaliang,village,40,1
+n3890098193,Naraliang,village,107,1
+n3890098212,Pangung,village,95,1
+n3890099825,Mompani,village,24,1
+n3890100202,Khupa Township,village,375,1
+n3890100597,Airfield Ziro Point,suburb,280,1
+n3890100618,Kamba,hamlet,49,1
+n3890100664,Swami Camp,village,212,1
+n3890100830,Chameliang,village,113,1
+n3890101070,Tikromla,hamlet,23,1
+n3897032455,Changsari,village,0,0
+n3897033189,Bhalka,hamlet,0,0
+n3897033221,Barabisa,village,0,0
+n3897088989,Sonapur,town,0,0
+n3897171387,New Jātinga,hamlet,0,0
+n3897172960,Rongmala,village,0,0
+n3897173006,Bhalukmari,village,1873,1
+n3897173065,Dighaldari,village,0,0
+n3897173068,Khaigarh,village,0,0
+n3897173138,Phulaguri,village,0,0
+n3897173196,Dimou,village,0,0
+n3898034979,Garobadha,town,0,0
+n3911460009,Saikot,village,2486,1
+n3922127631,Chingmei,village,0,0
+n3940781083,Amboli,village,0,0
+n3940781754,Anini,town,0,0
+n3940789967,Etalin,village,0,0
+n3940790135,Punli,village,0,0
+n3940790271,Immli,hamlet,0,0
+n3940790649,Ilupu,village,0,0
+n3940835308,New Lanwang,village,0,0
+n3941366657,New Tupi,village,0,0
+n3941367812,Khonsa,town,0,0
+n3959122329,Rima,village,0,0
+n3995419700,Ralruwng,village,0,0
+n4021624304,Phodkroh,village,0,0
+n4021624306,Umsieh,village,0,0
+n4021624517,Umpung,hamlet,0,0
+n4021626088,Laitumsaw,hamlet,0,0
+n4021626563,Ranikor,village,0,0
+n4021627118,Nongthymmai,hamlet,0,0
+n4021631554,Mawkasaiñ,village,0,0
+n4021632042,Phudphanblei,hamlet,0,0
+n4021632616,Rangthong,village,0,0
+n4021633568,Weiloi,village,0,0
+n4021633659,Mawkyrwat,town,0,0
+n4021633841,Umlangmar,hamlet,0,0
+n4021636355,Mawsdei Village,village,0,0
+n4021640756,Tyrsad,village,0,0
+n4021645623,Pyndem Mawthawiong,village,0,0
+n4021777677,Rongmara,village,0,0
+n4022574582,Chaklabasti,village,0,0
+n4022575029,Sohbar,suburb,0,0
+n4022576014,Nongjri Tishang,hamlet,0,0
+n4022577529,Mawkliaw,hamlet,0,0
+n4022578000,Wongkalikai,village,0,0
+n4023356410,Ampati,village,0,0
+n4052836693,Tingkhong,village,0,0
+n4052836712,Bāmunbāri,village,0,0
+n4052837207,Tingkhang,hamlet,0,0
+n4052837258,Tipamia,village,0,0
+n4052837262,Ghurania,hamlet,0,0
+n4052837592,Sapekhati,village,0,0
+n4052837614,2Rahan Pathār No.2,hamlet,0,0
+n4052837622,Bagādād,hamlet,0,0
+n4052837690,Nanābāt Namke,hamlet,0,0
+n4052837753,Nāmrup,hamlet,0,0
+n4052837774,Barhela,hamlet,0,0
+n4080112891,Sarthebari,town,0,0
+n4083015562,Kaolākhāt,hamlet,0,0
+n4116852802,Sonamura,town,0,0
+n4117423790,Dullabhcherra,town,0,0
+n4117423821,Bhubirband,hamlet,0,0
+n4117423943,Cherāgi,village,0,0
+n4117424138,Murliband,hamlet,0,0
+n4117424177,Krishnanagar,village,0,0
+n4117424328,Bāzārghat,hamlet,0,0
+n4123550077,Rongmachokgiri,village,0,0
+n4193528572,Balinong,village,0,0
+n4233982473,Rangterenggaon,hamlet,0,0
+n4233982501,Lakhaujān,hamlet,0,0
+n4233982951,Kohora,village,0,0
+n4234506128,Tipujān Basti,hamlet,0,0
+n4260245049,Kepre,hamlet,0,0
+n4273512624,Naginimora,town,0,0
+n4273512900,Garmur Silani,hamlet,0,0
+n4279635428,Dhalabari,village,0,0
+n4279635430,Uttar Chengmari,village,0,0
+n4281611810,Gosanimari,village,0,0
+n4281664856,Banekuchi,village,0,0
+n4301600028,Bholaganj,village,0,0
+n4323611983,Khālājhār,hamlet,0,0
+n4323612757,Daboka,town,0,0
+n4323995230,Guijan,village,0,0
+n4324640180,Sannu,village,0,0
+n4324640181,Longleng,village,0,0
+n4324640625,Kanubari,village,0,0
+n4324640922,Dillighāt,hamlet,0,0
+n4324640954,Titlāgarh,hamlet,0,0
+n4332457059,Wakching,town,0,0
+n4332977319,Rangapahār,village,6673,1
+n4436216520,Bebejiāgaon,hamlet,0,0
+n4552000699,Chumgang,hamlet,0,0
+n4571035213,Passingdong,village,0,0
+n4571759015,Dakshin Māgura,hamlet,0,0
+n4571759019,Katanpur,hamlet,0,0
+n4571759020,Katāmani,hamlet,0,0
+n4571759029,Kālāchhara,hamlet,0,0
+n4571779629,Kailashahar,town,0,0
+n4571959303,Murājār,hamlet,0,0
+n4571959313,Sābājpur,hamlet,0,0
+n458985962,Amingaon,suburb,0,0
+n4605252024,Sonādāri,hamlet,0,0
+n4605252080,Purāuri,hamlet,0,0
+n4611171500,Gunabari,village,0,0
+n4622774243,Basar,town,0,0
+n4636429203,Bagarsangan,hamlet,0,0
+n4636429253,Naldari,hamlet,0,0
+n4640111847,Digaru,village,0,0
+n4643564541,Hrishyamukh,village,0,0
+n4643790795,Saline,village,77,1
+n4646200593,Lazu,village,0,0
+n4658551922,Sethi,hamlet,49,1
+n4722094948,Wireless,suburb,0,0
+n4723587838,Super Market,suburb,0,0
+n4726881985,Amguri Bali,village,0,0
+n4740596570,Sunpura,village,0,0
+n4750552829,Paschim Dangapara,village,0,0
+n4750646404,Radhabari,village,0,0
+n4758150231,Alubari,village,0,0
+n4875901100,Rhenock,town,0,0
+n4885325314,Chapakhowa,town,0,0
+n4885601044,Pathar Kandi,village,0,0
+n4907087562,Kampur,village,0,0
+n4911457378,Sonbāri,village,0,0
+n4914355421,Gossaigaon,village,9068,1
+n4927496119,Gojaldoba Tea Garden,village,0,0
+n4928101490,Kājidhar,hamlet,0,0
+n4928851407,Rorithang,village,0,0
+n4929523961,Bardiha,village,0,0
+n4937415636,Chhatish,village,0,0
+n4946860488,Resubelpara,town,0,0
+n4946922010,Songsak,village,0,0
+n4962435919,Koyu,village,0,0
+n4962436012,Kakki Village,hamlet,0,0
+n4962436988,卡若,village,0,0
+n4962437412,米新,village,0,0
+n4972483169,Rehabari,suburb,0,0
+n4977284625,Sarusajai,suburb,0,0
+n4992083933,Hajo,town,0,0
+n5058289949,Howly,town,0,0
+n5067659202,Indranagar,village,0,0
+n5067659220,Amarānagar,hamlet,0,0
+n5067659472,Udharbond,village,0,0
+n5076864949,Sugnu,town,5132,1
+n5134591263,Nondola Rokhoa,village,0,0
+n5134827165,Jhargaon,village,2008,1
+n5134827186,Panchdimti,village,9337,1
+n5135390025,Dakshin Dangapara,village,0,0
+n5135424982,Kuchila,village,0,0
+n5135436713,Paschim Ariagaon,village,0,0
+n5136137955,Rasakhowa,village,0,0
+n5151516824,Laki,village,0,0
+n5221627788,Dakshin Hanskhali,village,0,0
+n5221627878,Dakshin Odlabari,suburb,0,0
+n5223441437,Kamlagaon,village,0,0
+n5228172041,Wakro,village,0,0
+n5232412630,Gamāri,hamlet,0,0
+n5232412638,Chāmāla,hamlet,0,0
+n5232412832,Ramkrishna Nagar,town,0,0
+n5232412834,Kālinagar,hamlet,0,0
+n5232412909,Bilaipur,village,0,0
+n5232413085,Barthal,hamlet,0,0
+n5232413125,Nagathal,village,0,0
+n5298833847,Rāmnagar,hamlet,0,0
+n5301144644,Barakhanti,village,9617,1
+n5301176731,Lalpokhar,village,0,0
+n5329425998,Kachna,village,4809,1
+n5329554258,Kalughat,village,0,0
+n5443196340,Tissa Camp,village,0,0
+n5443196345,Senua Noksa,village,0,0
+n5443285696,Zedua,village,0,0
+n5443287335,Hasse Russa,village,0,0
+n5443824131,Samdul,hamlet,51,1
+n5443824383,Khampti Pani,hamlet,0,0
+n5443824637,Halla,village,89,1
+n5443825607,Dong,village,5000,1
+n5444835331,Pinjoli,village,0,0
+n5451398255,Phura,hamlet,0,0
+n5451398320,Longma,hamlet,0,0
+n5451398382,Kelelo,hamlet,0,0
+n5451399005,Dalughāt,hamlet,0,0
+n5452016791,Kamalpur,village,0,0
+n5470440689,G Bualzang,village,0,0
+n5473363558,Padmabil,village,0,0
+n5473366012,Hezamara,village,0,0
+n5473366085,Mohanpur,village,0,0
+n5481995103,Wabagal,village,0,0
+n5541781845,Serou,village,4216,1
+n5541781882,Y. Thingkangphai,village,282,1
+n5641133107,Lolegaon,village,0,0
+n566650885,Satgaon,suburb,0,0
+n566651230,Pathar Quarry,suburb,0,0
+n566653288,Bonda Gaon,suburb,0,0
+n566685609,Maligaon,town,0,0
+n566687314,Lokhra,suburb,0,0
+n566687486,Basistha Chariali,suburb,0,0
+n566696013,Bongaon,suburb,0,0
+n566697156,Beltola,suburb,0,0
+n566697663,Hatigaon,suburb,0,0
+n566698751,Christian Basti,suburb,0,0
+n566698766,Ulubari,suburb,0,0
+n566698890,Bhangagarh,suburb,0,0
+n567356588,Jhanji,village,0,0
+n567356671,Gaurisagar Tiniali,town,0,0
+n567356919,Dimow,town,0,0
+n567357012,Sepon,village,0,0
+n567377649,Uriagaon,village,0,0
+n567377681,Puranigudam,village,0,0
+n567377883,Kuwarital,village,0,0
+n567378296,Kohora,hamlet,0,0
+n567378454,Bokakhat,village,0,0
+n567378552,Numaligarh,village,0,0
+n567378579,Sonārigaon,hamlet,0,0
+n567378692,Kāthani,hamlet,0,0
+n567378740,Dergaon,town,0,0
+n567382145,Raha,town,0,0
+n567382295,Bebejia,village,0,0
+n567387366,Nakhola,town,5000,1
+n567484451,Baihata,suburb,0,0
+n567484515,Duminichowki,village,0,0
+n567485006,Kharupetia,town,0,0
+n567485145,Dalgoan,town,0,0
+n567485269,Rowta,village,0,0
+n567485548,Dhekiajuli,village,0,0
+n567485794,Tumuki,village,0,0
+n567486083,Porua Chariali,village,0,0
+n567511751,Bomdila,city,0,0
+n567511973,Kaliabor,village,0,0
+n567512026,Batamari,village,0,0
+n567512068,Dolabari,village,0,0
+n567774564,Nongthymmai,village,0,0
+n567774578,Mawpun Kyrtiang,village,0,0
+n567774582,Lower Sohra,suburb,0,0
+n567777065,Silchar,city,172800,1
+n567778496,Bānglātal,hamlet,0,0
+n567778725,Shibergul,hamlet,0,0
+n567778784,Lowairpoa,village,0,0
+n567779009,Vāirengti,hamlet,0,0
+n567779184,Asimganj,hamlet,0,0
+n567779227,Baraigram,village,0,0
+n567779299,Nilambazar,village,0,0
+n567779579,Nāirgram,hamlet,0,0
+n567779603,Bhānga,village,0,0
+n567779712,Malua,hamlet,0,0
+n567779774,Katakhal,village,0,0
+n567779901,Panchgram,suburb,0,0
+n567780374,Bhaga Bāzār,village,0,0
+n567780425,Gagalghāt,hamlet,0,0
+n567780453,Saoāgrām,hamlet,0,0
+n567780460,Debipur,hamlet,0,0
+n567780479,Lāntugrām,hamlet,0,0
+n567780515,Bekirpār,hamlet,0,0
+n567780580,Narsingpur,village,0,0
+n567780601,Kābuganj,hamlet,0,0
+n567780727,Sonbāraghāt,hamlet,0,0
+n567785782,Bokajan,town,0,0
+n567786247,Silanijāngaon,hamlet,0,0
+n567786288,Kanaighat,hamlet,0,0
+n567786979,Raāngājāngaon,hamlet,0,0
+n568501813,Dakshin Thuthipakar,village,878,1
+n568554712,Sevoke,village,0,0
+n568559116,Teesta Bazaar,suburb,0,0
+n568559372,Legship,village,0,0
+n568559735,Jorethang,town,0,0
+n568559751,Naya Bazaar,village,0,0
+n568563346,Reshi,village,0,0
+n568597536,Birpara,town,0,0
+n568597691,Alipurduar,city,127342,1
+n568598346,Ellenbury Tea Garden,village,0,0
+n568598360,Kalagaity,village,0,0
+n568601510,Odlabari,town,0,0
+n568601522,Manabari Tea Garden,village,0,0
+n568601548,Uttar Phulbari,village,0,0
+n568601577,Ranichera Tea Garden,village,0,0
+n568601585,Damdim,village,0,0
+n568601702,Hay Hay Pathar Tea Garden I,village,0,0
+n568601726,Mal Bazaar,town,0,0
+n568601744,Tunbari Tea Garden,village,0,0
+n568602358,Binnaguri,village,0,0
+n568987116,Dawki,village,0,0
+n568987587,Sohkha Myshon,hamlet,0,0
+n568988545,Amlarem,village,0,0
+n568988568,Katigora,village,0,0
+n568990011,Khelmapur,hamlet,0,0
+n568990124,Ratacherra,village,0,0
+n568990151,Kalain,village,0,0
+n568991599,Pynthorlangtein,hamlet,0,0
+n568991986,Lad Rymbai,town,0,0
+n569040825,Ngangkhalawai,village,0,0
+n569040865,Moirang,town,0,0
+n569041531,Wangjing,village,0,0
+n569041570,Bishnupur,town,5000,1
+n569041577,Nungsai Chiru,village,882,1
+n569041691,Nambol,village,0,0
+n569041716,Waithou,village,0,0
+n569041845,Khangabok,village,0,0
+n569041851,Thoubal,town,5000,1
+n569042398,Singjamei,suburb,0,0
+n569048716,Binnākāndi,hamlet,0,0
+n569048813,Fulertal,village,0,0
+n569048947,Pailapool,town,0,0
+n569049736,Jiribam,town,7343,1
+n569049747,Lālpāni,hamlet,0,0
+n569050169,Jirighāt,village,0,0
+n569050220,Hilghat,village,2286,1
+n569050246,Gamphazol,village,0,0
+n569051370,Nungba,village,0,0
+n569051529,Bolongdai,village,0,0
+n569052467,Irang Khun,village,0,0
+n569052538,Charoipandongba Kabui,village,816,1
+n569052549,Longa Koireng,village,963,1
+n569052750,Khumbong,village,0,0
+n569053407,Noney,town,0,0
+n569053462,Sehjang,village,273,1
+n569053565,Boungjang,village,154,1
+n569053861,Patsoi,village,0,0
+n569067215,Koirengei,suburb,0,0
+n569067293,Kanglatongbi,village,7152,1
+n569067389,L. Haibung,village,0,0
+n569067433,Daili,village,931,1
+n569067442,Kangpokpi,town,7476,1
+n569067515,Tumuyon Khullen,village,1625,1
+n569067646,Senapati,town,5000,1
+n569067667,Makeng Katomei,village,463,1
+n569067702,Karong,village,0,0
+n569068034,Maram,village,0,0
+n569068450,Tadubi,village,0,0
+n569068599,Mao Gate,village,0,0
+n569068827,KIGWEMA Vlllage,village,0,0
+n569069155,Chumukedima,town,25885,1
+n569069510,Peducha,village,0,0
+n569069644,Kiruphema Bawe,village,0,0
+n569192397,Salsabari,village,0,0
+n569194589,Boko,town,0,0
+n569194737,Agia,village,0,0
+n569195095,Krishnai,village,0,0
+n569195257,Solmari,village,0,0
+n569195342,Pancharatna,village,0,0
+n569197078,Patgaon,village,0,0
+n569198283,Chhaygaon,village,0,0
+n569198749,Azara,suburb,0,0
+n569316645,Falakata,town,0,0
+n569317022,Railway Colony,suburb,0,0
+n569317573,Agamoni,village,0,0
+n569317975,Sonapur,village,0,0
+n569318717,Bahalpur,village,0,0
+n569440948,Karandighi,town,318800,1
+n5714069407,Lanka,town,0,0
+n5730492021,Thesoajur,hamlet,0,0
+n5730778133,Golakganj,town,0,0
+n5730778619,Gauripur,town,0,0
+n5736469435,Tengakhat,village,0,0
+n5749813511,Shokuvi,village,0,0
+n5752464156,Khasjangal-II,village,0,0
+n5753920113,Jojoli Panchali,hamlet,0,0
+n5754174363,Nazira,town,0,0
+n5754176320,Deopāni,hamlet,0,0
+n5754176442,Athkhel,hamlet,0,0
+n5754189169,Nirmoliagaon,hamlet,0,0
+n575546641,Ghoom,village,0,0
+n575546779,Darjeeling,city,118800,1
+n5758970447,Kumai,village,0,0
+n5763173072,Sirhi-Kuki,village,0,0
+n5766110467,Mahur,town,0,0
+n5769923230,Netsami,village,0,0
+n5775677746,Kamarkuchi,village,0,0
+n5779959525,Amraguri,hamlet,0,0
+n5779960275,Rāngaijhora,hamlet,0,0
+n5779960280,Āmguribāzār,village,0,0
+n5779960396,Barābāzār,hamlet,0,0
+n5779960783,Bijni,town,0,0
+n5779960785,Ulubāri,hamlet,0,0
+n5794288699,Rupasi Bāzār,hamlet,0,0
+n5796962861,Tangla,town,0,0
+n5796963915,Harisinga,village,0,0
+n5797001321,Bachla,hamlet,0,0
+n5797001388,Khola,hamlet,0,0
+n5797001515,Dattapur,hamlet,0,0
+n5797001557,Māhakāl,hamlet,0,0
+n5801909444,Dighaljar,hamlet,0,0
+n5803724428,Peren New Dist HQ,village,0,0
+n5804672083,Timānbārtani,hamlet,0,0
+n5867508668,Mapuia,hamlet,0,0
+n5870320977,Heninkunglwa,village,0,0
+n5893508199,Uriamghāt,hamlet,0,0
+n5893508425,Sarupathar,town,0,0
+n5894916808,Sohümi,village,0,0
+n5895090710,Tsungar,village,0,0
+n5896060918,Tamlu,town,0,0
+n5903313818,Sechu Zubza,village,0,0
+n5914129350,Jaboka,town,0,0
+n5921311276,Wolam Nyukyan,village,2575,1
+n5928695480,Bonkolong,village,0,0
+n5928696309,Beisumpui,village,0,0
+n5928696450,Athibung,village,0,0
+n5936564620,Mahisashan,village,0,0
+n5936564737,Balia,hamlet,0,0
+n5971389324,Yonglok,village,0,0
+n5971389338,Lāhangaon,hamlet,0,0
+n6015351225,Noklak,town,0,0
+n603491630,Tumlong,hamlet,0,0
+n603492323,Bringbong,village,0,0
+n603492984,Penlong,village,0,0
+n603496800,Majitar,suburb,0,0
+n603497219,Singtam,town,0,0
+n603497501,Rangpo,town,0,0
+n603538938,Ravangla,town,2282,1
+n6102273624,Bālijāngaon,hamlet,0,0
+n6102286623,Phāngchagāon,hamlet,0,0
+n6105481079,Sildubi,hamlet,0,0
+n6112240556,Bagānpāra,village,0,0
+n6112553474,Niz Fulabri Part-III,hamlet,0,0
+n6127804984,Matabhanga,town,0,0
+n6154014503,Gonirgram Part-IV,hamlet,0,0
+n6175514143,Mazuari,hamlet,0,0
+n6176656093,Nāgābāt,hamlet,0,0
+n6176771222,Kekang Ādanggaon,hamlet,0,0
+n6176772127,Mara Bheti,hamlet,0,0
+n6176772315,Kaliani,hamlet,0,0
+n6176772330,Chakihola,hamlet,0,0
+n6176986909,Ainachera T.E.,hamlet,0,0
+n6186709665,Vantaiphai,village,0,0
+n6188499361,Borapansury,village,0,0
+n6189804838,Lohry (Laty),village,0,0
+n6189805690,Saikao Khihthie,village,0,0
+n6195177267,Kathalia,village,0,0
+n6195695014,Ampinagar,village,0,0
+n6197811107,Nutan Bazar,village,0,0
+n6208067802,N. Hlimen,village,0,0
+n6211786360,Chawngte,village,0,0
+n6213054276,Vahia,village,0,0
+n6223526153,Sopleng,village,0,0
+n6223527138,Rishophung,village,354,1
+n6223527664,Bongbal Khullen,village,304,1
+n6223527899,Kamuching,village,789,1
+n6223527931,Nungbrang,village,0,0
+n6223528196,Changamdabi,village,0,0
+n6229199391,National Games Village,suburb,0,0
+n6229200943,Kangchup Geljang,village,358,1
+n6231259831,Nāgātila,hamlet,0,0
+n6231259833,Bhubandhar No.6,hamlet,0,0
+n6231259837,Sukhtala,hamlet,0,0
+n6231259869,Mahādebpur,hamlet,0,0
+n6231259873,Dholai,village,0,0
+n6237090886,Monjrong Khulen,hamlet,0,0
+n6237092078,Gaidimjang II,village,0,0
+n6237756760,Molnoi,village,0,0
+n6237756762,Palel,town,0,0
+n6240163841,Ganganagar,village,0,0
+n6241313902,Allenpur,hamlet,0,0
+n6241313911,Nawābil,hamlet,0,0
+n6241721427,Srikona,village,0,0
+n6241721442,Ratpur,hamlet,0,0
+n6246892055,Dīwāngaon,hamlet,0,0
+n6247256785,Imphoi,hamlet,0,0
+n6247256860,Boljāng,hamlet,0,0
+n6247259771,Binnakandi,village,0,0
+n6251241624,Nablaidisa,hamlet,0,0
+n6251457193,Dārangibra,hamlet,0,0
+n6251457365,Dārangbra,hamlet,0,0
+n6251457713,Nūtan Bātāri,hamlet,0,0
+n6251457871,Purānā Hājong,hamlet,0,0
+n6251548682,New Khunophung,hamlet,0,0
+n6253840325,Nongbah,village,0,0
+n6255618580,Smit,village,0,0
+n6258651483,Jātinga,hamlet,0,0
+n6258654598,Jātinga,hamlet,0,0
+n6258654613,Āthāratila,hamlet,0,0
+n6258654614,Panibhara Part I,hamlet,0,0
+n6258772330,Umtal,village,200,1
+n6259489615,Pālai,hamlet,0,0
+n6259491193,Bāshkhāl,hamlet,0,0
+n6259491241,Derby T.E.,hamlet,0,0
+n6259491420,Allenpur,hamlet,0,0
+n6261456180,Chotojalenga iV,hamlet,0,0
+n6262212035,Chutrasāngan,hamlet,0,0
+n6262442470,Māchhkhāl,hamlet,0,0
+n6262443163,Chengjur,hamlet,0,0
+n6264797114,Dokmoka,village,0,0
+n6265478884,Dighaljār,hamlet,0,0
+n6265479424,Dighaljār,hamlet,0,0
+n6265479464,Chaudhari Bāzār,hamlet,0,0
+n6265607497,Amrāguri,hamlet,0,0
+n6268439594,Siji,village,0,0
+n6268440829,Karlo,village,0,0
+n6268442343,Chisi,village,0,0
+n6268442454,Pading Village,village,0,0
+n6286331577,Thizama,village,0,0
+n6338287389,Katlicherra,town,0,0
+n6338319732,Tingārgul,hamlet,0,0
+n6341037283,New Lamka,village,0,0
+n653096746,Chandmari,suburb,0,0
+n653096764,Ganeshguri,suburb,0,0
+n653096771,Japorigog,suburb,0,0
+n653096774,Ambikagiri Nagar,suburb,0,0
+n653096822,Noonmati Refinery,suburb,0,0
+n653096938,Narengi,suburb,0,0
+n653096955,Guwahati Club,suburb,0,0
+n653096968,Guwahati,city,1000000,1
+n653097008,Gitanagar,suburb,0,0
+n653097024,Zoo Rd Tiniali,suburb,0,0
+n653097048,Silpukhuri,suburb,0,0
+n653097300,Kamakhya Dham,suburb,0,0
+n653097342,Shantipur,suburb,0,0
+n653097352,Bharalumukh,suburb,0,0
+n653097355,Machkhowa,suburb,0,0
+n653097365,Fancy Bazaar,suburb,0,0
+n653107330,Birubari,suburb,0,0
+n653109503,Aathgaon,suburb,0,0
+n653996522,Sawkuchi,suburb,0,0
+n653997343,Lalmati,suburb,0,0
+n653997349,Bhetapara,suburb,0,0
+n653997350,Ghoramara Chariali,suburb,0,0
+n653997362,Kahilipara,suburb,0,0
+n653997443,Lalganesh,suburb,0,0
+n653997449,Anil Nagar,suburb,0,0
+n664138101,Umsning,village,0,0
+n664138171,Myrdon,village,0,0
+n664140218,Nongpoh,town,0,0
+n6708332985,Naharkatia,town,0,0
+n6710132444,"Rājgarh ,786611",hamlet,0,0
+n6712175062,Burhi Khow,village,0,0
+n6723554614,Bamutia,village,0,0
+n6728189225,Kulajan,town,0,0
+n6728629916,Dikom,village,0,0
+n673551549,Kamarpur,village,0,0
+n673551771,Bhaktagaon,village,0,0
+n673551785,Sildubi,village,0,0
+n6736634107,Ketetong (Singpho Village),village,0,0
+n6736634121,Ketetong Market,village,0,0
+n6736634124,Ing Thong (Singpho Village),village,0,0
+n6742707532,Baghjan Gaon,hamlet,0,0
+n6780474636,Palongdhepa,hamlet,0,0
+n6867526200,Kliehtryshi,village,0,0
+n692800696,Sukna,village,0,0
+n692800829,Kurseong,town,0,0
+n697273393,Hasimara,village,0,0
+n697273409,Old Hasimara,village,0,0
+n697273422,Bharnobari Tea Garden,village,6626,1
+n697273439,Dalsingpara,village,0,0
+n697273490,Raigaon,suburb,0,0
+n697273497,Jaigaon,town,0,0
+n703561197,Sumbuk,village,0,0
+n7045996651,Amotlah,village,0,0
+n715137671,Chabua,town,0,0
+n7160576571,Phaikoh,village,391,1
+n7160990194,Kamalpur,town,11000,1
+n7206704689,Seppa,city,0,0
+n7206704704,Pachi Camp,village,0,0
+n7206705199,Fachang,village,0,0
+n7206705209,Sanoragma,village,0,0
+n7216824088,Mualkang,village,0,0
+n746951021,Dett Rupai,village,0,0
+n7596494192,Chakpi Karong,village,1569,1
+n7677540658,Tilan Muslimpara,hamlet,0,0
+n774477557,Risop,hamlet,0,0
+n7781216150,Suklai,village,0,0
+n7868916815,Phulhara,village,11113,1
+n7869361842,Natun Dilokthai,hamlet,0,0
+n7869377918,Langting,town,0,0
+n7869403304,Salikāntapur,hamlet,0,0
+n7869403375,Kalachand,village,0,0
+n7869411208,Didāokha,hamlet,0,0
+n7869411257,Mupa,village,0,0
+n7869434217,Jorāi Bātāri,hamlet,0,0
+n7869434264,Semdhikar,hamlet,0,0
+n7947044583,Nij Lahoāl,hamlet,0,0
+n8007236790,Dashdarga,village,0,0
+n8211834970,Kalamdia,hamlet,77,1
+n8224210888,Aprunli,hamlet,0,0
+n829889203,Jalpaiguri,city,107400,1
+n831395848,Meka,village,0,0
+n8318501431,Tato,village,0,0
+n8318501682,Lungte,hamlet,0,0
+n8318502060,Kangte,village,0,0
+n8318502581,Pidi,village,0,0
+n8318502697,Lamak,village,0,0
+n8318502775,Nutin,hamlet,0,0
+n8318502825,Jorong,hamlet,0,0
+n8318560682,Taiyong,hamlet,0,0
+n8318560687,Sheet,village,0,0
+n8318562872,Yangrang,hamlet,0,0
+n8318563333,Damsong,village,0,0
+n8318563540,Gapur,village,83,1
+n8318564632,Chingo,village,0,0
+n832590787,Silghat,village,0,0
+n8344614438,Simong,village,0,0
+n8344614472,Karko,village,0,0
+n8345276442,Gette,village,0,0
+n835158853,Fatapukur,village,0,0
+n835158982,Talma Haat,village,0,0
+n835159567,Parasuram Kund,village,0,0
+n835159733,Raninagar,suburb,0,0
+n835159753,Ziro-Kamja,village,0,0
+n835159997,Mahadevpur,village,0,0
+n835160408,Chongkham,town,0,0
+n835160429,Tengapani,town,0,0
+n835188809,Musai,village,262,1
+n835188872,Krowti Labour Camp,hamlet,29,1
+n835188922,Warti,hamlet,84,1
+n835188929,Sarti,hamlet,0,0
+n835188967,Krowti,village,27,1
+n835188995,Tinai,village,57,1
+n835189739,Menilkrai,village,0,0
+n835189752,Kibithu,town,0,0
+n835196251,Jalakia Suti,village,0,0
+n835196291,Akajan Miri,village,0,0
+n835196299,No. 2 Chila Pathar,hamlet,0,0
+n835196345,Silapathar,town,0,0
+n835235785,Daporijo,town,0,0
+n835236272,Gali,village,0,0
+n835236359,Kebang,village,0,0
+n835236429,Oyan,village,0,0
+n835236474,Ruksin,suburb,0,0
+n835236532,Oyan,town,0,0
+n835237088,Dorje Jeku,village,0,0
+n835237136,Boikunthapur,village,700,1
+n835239702,Sikari,village,0,0
+n835240693,Rest-Camp,village,0,0
+n835241083,Jonai,town,1000,1
+n835242226,Kuli Tiniali,village,0,0
+n835242397,Laimekuri,village,0,0
+n835331777,Doimukh,town,0,0
+n835331873,Bogoli,village,0,0
+n835332183,Itanagar,city,5000,1
+n835332216,Hoj,village,0,0
+n835353480,Old Ziro,village,0,0
+n8426671146,Toru,village,0,0
+n8427511599,古辛,hamlet,0,0
+n856798332,Raga,city,0,0
+n8677138910,Pakke Kessang,village,0,0
+n8677149298,Lemmi,city,0,0
+n8890517300,Paya,hamlet,0,0
+n8890657875,米利姆,village,0,0
+n8891072814,Hanhchara,village,0,0
+n8939984141,阿马土拉,village,0,0
+n8958975124,Moirabari,town,0,0
+n8972252273,Barapujia,town,0,0
+n8986234964,Madarihat,town,0,0
+n9032249068,Bagafa,town,0,0
+n904878222,NK Darranga,village,0,0
+n904878767,Rangia,town,0,0
+n9195888914,Nongdam,village,0,0
+n9195889006,Maphou Kuki East,village,0,0
+n9225808254,Grage,village,0,0
+n9235294584,Mekhliganj,town,9217,1
+n9280365404,Tezu,town,0,0
+n9317365493,Lengeri Gaon,village,0,0
+n9320265610,Kangchup Songlung,village,274,1
+n9393177813,Kurijhār,hamlet,0,0
+n9396862470,Semma,village,0,0
+n9396873796,Tabio,village,0,0
+n9396878651,Leporiang,village,0,0
+n9404074280,得吉,village,0,0
+n9436791502,Sialtor Taranjanbari,village,0,0
+n9436791512,Kutumposa,village,0,0
+n9436795777,Bolhanja,village,2880,1
+n9436886001,Barhat,village,0,0
+n9514996937,Dhemaji,town,0,0
+n9566681110,Honjāngoan,hamlet,0,0
+n9566699526,Morābāri,hamlet,0,0
+n9566699565,Kailāshpu,village,0,0
+n958034647,Borhapjan,village,0,0
+n958034891,Doom Dooma,town,0,0
+n958036050,Bhismaknagar,hamlet,0,0
+n958036159,Makum,town,0,0
+n958143733,Mereli Pathar,village,0,0
+n958143785,Lāhoāl Pātra,hamlet,0,0
+n958144178,Panitola,village,0,0
+n9602451390,Seijang,village,0,0
+n9602558638,Keibi Hekakmapal,village,0,0
+n9603015276,Mantripukhri,village,0,0
+n9628772871,Chy,hamlet,0,0
+n9644790306,Pūrba Sālnāri,hamlet,0,0
+n9648453439,Neora Nadi Tea Garden,village,0,0
+n9667487837,Piphema,village,0,0
+n9673980884,Pangei,village,0,0
+n9697194369,Khariyābhetāgoan,hamlet,0,0
+n9699656425,Khowāng,village,0,0
+n9712876629,Larāngerpār,hamlet,0,0
+n9712880189,Sayedpur,hamlet,0,0
+n9712901162,Harinagar,hamlet,0,0
+n9713749504,Rajatilla,hamlet,0,0
+n9720293884,Dakshin Mohanpur,hamlet,0,0
+n9721852060,Nagdirgrām,hamlet,0,0
+n9721974647,Nandagrām,hamlet,0,0
+n9722064371,Rekhāthal,hamlet,0,0
+n974476728,Rimbi,village,0,0
+n974648649,Damthang,village,0,0
+n974649366,Tarku,village,0,0
+n974750727,Mangan,town,5000,1
+n974758518,Dikchu,village,0,0
+n974762520,Raley,village,0,0
+n974862524,Rumtek,hamlet,0,0
+n975632561,Jayanagar,suburb,0,0
+n975632584,Duliajan,town,0,0
+n975649155,Settlement Area,suburb,0,0
+n977423743,Tipling,suburb,0,0
+n983120116,Ranipool,suburb,0,0
+n9834404366,Bagribari,village,0,0
+n985076183,Namchi,town,5000,1
+n9909087694,Tulihal,suburb,0,0
+n9926237071,Phukangaon,village,0,0
+n9933292694,Margherita,town,0,0

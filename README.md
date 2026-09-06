@@ -99,9 +99,10 @@ uvicorn backend.app.main:app --reload            # add NER_USE_OSM=1 for OSM
 ```
 
 There are no external data dependencies at runtime. The seed network, the
-rainfall climatology and the built OSM road network are all committed, so a
-fresh clone runs offline and immediately — rebuilding the OSM network would
-otherwise mean a 10-15 minute walk over rate-limited Overpass mirrors.
+rainfall climatology, the built OSM road network and the 6,568-settlement
+populated-places layer are all committed, so a fresh clone runs offline and
+immediately — rebuilding them would otherwise mean a 10-15 minute walk over
+rate-limited Overpass mirrors.
 
 ```bash
 python -m pytest tests -q     # 191 tests
