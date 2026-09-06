@@ -177,3 +177,22 @@ def test_the_dashboard_has_no_handlers_for_removed_controls():
     # literally in a $() call.
     missing = {r for r in referenced - ids if not r.startswith("tab-")}
     assert not missing, f"app.js refers to elements that do not exist: {sorted(missing)}"
+
+
+def test_every_planning_control_triggers_a_replan():
+    """Month, cargo and priority re-planned while origin, destination and the
+    mode chips did not, so changing the destination left the previous lane's
+    numbers on screen - stale results read as current ones."""
+    import re
+    from pathlib import Path
+
+    app_js = (Path(__file__).resolve().parents[1] / "frontend" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    for control in ("origin", "destination", "month", "priority", "cargo"):
+        assert re.search(rf'\$\("{control}"\)\.onchange', app_js), (
+            f"#{control} does not re-plan when changed"
+        )
+    assert re.search(r'chipRow\(\$\("modeChips"\)[^)]*planRoute\)', app_js), (
+        "the mode chips do not re-plan when toggled"
+    )

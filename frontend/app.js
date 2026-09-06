@@ -290,7 +290,7 @@ async function boot() {
   for (const id of ["month", "riskMonth", "accessMonth"]) fillSelect($(id), MONTHS, "jul");
 
   const modeLabels = MODES.map((m) => [m, m[0].toUpperCase() + m.slice(1)]);
-  chipRow($("modeChips"), modeLabels, state.modes);
+  chipRow($("modeChips"), modeLabels, state.modes, planRoute);
   chipRow($("riskModeChips"), modeLabels, state.riskModes, drawRisk);
   // A chip per place was fine for 46 seed towns and is a wall of 5,000
   // buttons once real settlements land. A filterable list scales.
@@ -711,6 +711,12 @@ document.querySelectorAll("nav button").forEach((button) => {
   };
 });
 
+// Every control on this panel re-plans. Month, cargo and priority already did,
+// while origin, destination and the mode chips did not - so changing where the
+// consignment was going left the previous lane's numbers on screen, which is
+// worse than showing nothing.
+$("origin").onchange = planRoute;
+$("destination").onchange = planRoute;
 $("priority").onchange = () => { applyPriority(); planRoute(); };
 $("cargo").onchange = () => { applyCargo(); planRoute(); };
 $("month").onchange = planRoute;

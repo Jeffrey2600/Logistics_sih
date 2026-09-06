@@ -25,3 +25,8 @@ ml/landslide/model_meta.json
 .pytest_cache/
 shots/
 package-lock.json
+
+# Scratch diagnostics live in the scratchpad, not the repo.
+/*.js
+!/*.config.js
+shots/
