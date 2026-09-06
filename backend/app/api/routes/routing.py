@@ -4,7 +4,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from ...models.schemas import RouteRequest, SeasonalRequest
-from ...services.routing import RoutingError, plan_route, seasonal_comparison
+from ...services.routing import (
+    RoutingError, compare_options, plan_route, seasonal_comparison,
+)
 from ..deps import get_network, get_risk_model
 
 router = APIRouter(prefix="/routing", tags=["routing"])
@@ -41,6 +43,21 @@ def seasonal(request: SeasonalRequest):
             modes=request.modes,
             value_of_time=request.value_of_time,
             alternatives=0,
+        )
+    except RoutingError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/compare", summary="Every sensible option for one consignment, side by side")
+def compare(request: SeasonalRequest, month: str = "jul"):
+    try:
+        return compare_options(
+            get_network(),
+            get_risk_model(),
+            origin=request.origin,
+            destination=request.destination,
+            month=month,
+            value_of_time=request.value_of_time,
         )
     except RoutingError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

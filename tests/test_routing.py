@@ -123,3 +123,63 @@ def test_same_origin_and_destination_rejected(network, risk_model):
 def test_unknown_mode_rejected(network, risk_model):
     with pytest.raises(RoutingError, match="unknown mode"):
         plan(network, risk_model, "IMP", "GAU", modes=["teleport"])
+
+
+# ------------------------------------------------------ option comparison ---
+
+def test_compare_returns_every_scenario(network, risk_model):
+    from backend.app.services.routing import SCENARIOS, compare_options
+
+    result = compare_options(network, risk_model, "KHM", "GAU", month="jul")
+    assert len(result["options"]) == len(SCENARIOS)
+    assert all("label" in o for o in result["options"])
+
+
+def test_compare_marks_the_balanced_plan_as_overall_best(network, risk_model):
+    """Each scenario minimises a different objective, so their scores are not
+    on one scale; picking the smallest named whichever weighting happened to
+    produce small numbers."""
+    from backend.app.services.routing import compare_options
+
+    result = compare_options(network, risk_model, "KHM", "GAU", month="jul")
+    assert result["best"]["overall"] == "recommended"
+
+
+def test_compare_superlatives_match_the_numbers(network, risk_model):
+    from backend.app.services.routing import compare_options
+
+    result = compare_options(network, risk_model, "IMP", "GAU", month="jul")
+    usable = [o for o in result["options"] if o["available"]]
+    by_key = {o["key"]: o for o in usable}
+
+    assert by_key[result["best"]["cheapest"]]["cost_per_tonne"] == min(
+        o["cost_per_tonne"] for o in usable)
+    assert by_key[result["best"]["fastest"]]["total_hours"] == min(
+        o["total_hours"] for o in usable)
+    assert by_key[result["best"]["most_reliable"]]["expected_delay_hours"] == min(
+        o["expected_delay_hours"] for o in usable)
+
+
+def test_compare_reports_an_impossible_scenario_rather_than_hiding_it(network, risk_model):
+    """'There is no rail on this lane' is a finding, not a blank row."""
+    from backend.app.services.routing import compare_options
+
+    result = compare_options(network, risk_model, "TWG", "GAU", month="jul")
+    for option in result["options"]:
+        assert option["available"] or option["reason"]
+
+
+def test_compare_counts_distinct_plans(network, risk_model):
+    """Several scenarios often produce the same journey; the view should say
+    how many genuinely different options exist."""
+    from backend.app.services.routing import compare_options
+
+    result = compare_options(network, risk_model, "KHM", "GAU", month="jul")
+    assert 1 <= result["distinct_plans"] <= len(result["options"])
+
+
+def test_compare_rejects_an_unknown_place(network, risk_model):
+    from backend.app.services.routing import RoutingError, compare_options
+
+    with pytest.raises(RoutingError):
+        compare_options(network, risk_model, "ZZZ", "GAU")

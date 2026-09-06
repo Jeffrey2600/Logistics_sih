@@ -3,6 +3,11 @@
    static files FastAPI can serve from the same free-tier dyno as the API. */
 
 const API = location.origin;
+const MONTH_NAME = {
+  jan: "January", feb: "February", mar: "March", apr: "April", may: "May",
+  jun: "June", jul: "July", aug: "August", sep: "September", oct: "October",
+  nov: "November", dec: "December",
+};
 const MONTHS = [
   ["jan", "January"], ["feb", "February"], ["mar", "March"], ["apr", "April"],
   ["may", "May"], ["jun", "June"], ["jul", "July (peak monsoon)"], ["aug", "August"],
@@ -15,7 +20,7 @@ const MODE_COLOUR = { road: "#4da3ff", rail: "#a371f7", water: "#2dd4bf", air: "
 // deutan reader and 8.2 for normal vision, on exactly the two bands a risk map
 // exists to separate. Line width carries the same signal as a second channel,
 // so the map never depends on hue alone.
-const RISK_COLOUR = { low: "#199e70", elevated: "#c98500", severe: "#d03b3b" };
+const RISK_COLOUR = { low: "#1baf7a", elevated: "#eda100", severe: "#d03b3b" };
 const RISK_LABEL = { low: "Usually open", elevated: "Often disrupted", severe: "Frequently blocked" };
 // The server bands the combined figure; the map may be showing one hazard.
 const bandOf = (p) => (p < 0.15 ? "low" : p < 0.35 ? "elevated" : "severe");
@@ -167,13 +172,20 @@ function addDataLayers() {
   // two layers over the same source rather than one expression.
   const routePaint = {
     "line-color": ["get", "colour"],
-    "line-width": ["interpolate", ["linear"], ["zoom"], 5, 4, 10, 9],
+    "line-width": [
+      "interpolate", ["linear"], ["zoom"],
+      5, ["case", ["==", ["get", "chosen"], 1], 5, 2.5],
+      10, ["case", ["==", ["get", "chosen"], 1], 10, 5],
+    ],
   };
   if (!map.getLayer("route-line")) map.addLayer({
     id: "route-line", type: "line", source: "route",
     filter: ["!=", ["get", "mode"], "air"],
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: routePaint,
+    paint: {
+      ...routePaint,
+      "line-opacity": ["case", ["==", ["get", "chosen"], 1], 1, 0.45],
+    },
   });
   if (!map.getLayer("route-line-air")) map.addLayer({
     id: "route-line-air", type: "line", source: "route",
@@ -265,58 +277,6 @@ function chipRow(container, values, set, onChange) {
   }
 }
 
-function buildCandidatePicker(allPlaces) {
-  const search = $("candidateSearch");
-  const list = $("candidateList");
-  const chosen = $("candidateChosen");
-
-  // A town can appear twice: once as a curated seed place and once as the OSM
-  // settlement node sitting near it. Offering both is confusing and the seed
-  // entry is the better one - it carries population, market and cold-store
-  // data that a bare OSM node does not.
-  const byName = new Map();
-  for (const place of allPlaces) {
-    const key = `${place.name.toLowerCase()}|${place.state.toLowerCase()}`;
-    const existing = byName.get(key);
-    const isSeed = !place.id.startsWith("s");
-    if (!existing || (isSeed && existing.id.startsWith("s"))) byName.set(key, place);
-  }
-  const places = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
-
-  const render = () => {
-    const q = search.value.trim().toLowerCase();
-    // Cap the rendered list: typing narrows it, and nobody scrolls 5,000 rows.
-    const matches = places
-      .filter((p) => !q || p.name.toLowerCase().includes(q))
-      .slice(0, 200);
-    list.innerHTML = matches
-      .map((p) => `<option value="${esc(p.id)}">${esc(p.name)}${p.state ? " — " + esc(p.state) : ""}</option>`)
-      .join("");
-    if (!matches.length) list.innerHTML = `<option disabled>No match</option>`;
-  };
-
-  const renderChosen = () => {
-    chosen.innerHTML = [...state.candidates]
-      .map((id) => `<span class="chip on" data-remove="${esc(id)}">${esc(state.places[id]?.name || id)} ✕</span>`)
-      .join("") || `<span class="note">None selected</span>`;
-    $("candCount").textContent = `${state.candidates.size} selected`;
-    chosen.querySelectorAll("[data-remove]").forEach((el) => {
-      el.onclick = () => { state.candidates.delete(el.dataset.remove); renderChosen(); };
-    });
-  };
-
-  search.oninput = render;
-  list.ondblclick = list.onchange = () => {
-    for (const option of list.selectedOptions) {
-      if (!option.disabled) state.candidates.add(option.value);
-    }
-    renderChosen();
-  };
-
-  render();
-  renderChosen();
-}
-
 async function boot() {
   // Junctions outnumber settlements two to one and cannot be chosen
   // meaningfully - "n4021632273" is not somewhere anyone ships from.
@@ -334,27 +294,10 @@ async function boot() {
   chipRow($("riskModeChips"), modeLabels, state.riskModes, drawRisk);
   // A chip per place was fine for 46 seed towns and is a wall of 5,000
   // buttons once real settlements land. A filterable list scales.
-  buildCandidatePicker(places);
   applyPriority();
   applyCargo();
 
   planRoute();
-}
-
-// The closure list is built from segments the risk tab has already fetched, so
-// the route tab no longer pulls megabytes of geometry at boot just to fill a
-// dropdown. It is limited to named national highways: an OSM network has
-// thousands of unnamed residential stubs, and a planner closes NH-10, not
-// "n4021632273 – n12296272662".
-function refreshClosureOptions() {
-  const closable = state.segments
-    .filter((s) => s.mode === "road" && s.named && /^NH/i.test(s.route_ref))
-    .sort((a, b) => b.risk.probability - a.risk.probability)
-    .slice(0, 300)
-    .map((s) => [s.id, `Close ${s.route_ref}: ${s.label}`]);
-
-  const current = $("closure").value;
-  fillSelect($("closure"), [["", "No closures"]].concat(closable), current);
 }
 
 /* --------------------------------------------------------------- route --- */
@@ -383,7 +326,6 @@ async function planRoute() {
   button.disabled = true;
   button.textContent = "Finding the best route…";
   try {
-    const closure = $("closure").value;
     const plan = await api("/routing/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -394,7 +336,6 @@ async function planRoute() {
         modes: [...state.modes],
         weights: weights(),
         value_of_time: +$("vot").value,
-        blocked_edge_ids: closure ? [closure] : [],
         alternatives: 3,
       }),
     });
@@ -408,7 +349,7 @@ async function planRoute() {
   }
 }
 
-function drawItinerary(itinerary) {
+function itineraryFeatures(itinerary, { chosen }) {
   const features = [];
   const coords = [];
   for (const leg of itinerary.legs) {
@@ -420,7 +361,11 @@ function drawItinerary(itinerary) {
       geometry: { type: "LineString", coordinates: line },
       properties: {
         mode: leg.mode,
-        colour: MODE_COLOUR[leg.mode] || "#9aa4ad",
+        chosen: chosen ? 1 : 0,
+        // Alternatives are drawn in grey underneath so the reader can see the
+        // options exist and how they differ, without competing with the plan
+        // actually being recommended.
+        colour: chosen ? (MODE_COLOUR[leg.mode] || "#9aa4ad") : "#9aa4ad",
         popup: `<strong>${esc(leg.from_name)} → ${esc(leg.to_name)}</strong><br>
                 ${esc(leg.mode)} · ${esc(leg.route_ref)} · ${leg.distance_km} km<br>
                 ${fmtH(leg.hours)} · ${fmtRs(leg.cost_per_tonne)}/t<br>
@@ -428,16 +373,37 @@ function drawItinerary(itinerary) {
       },
     });
   }
+  return { features, coords };
+}
+
+function drawPlan(plan, highlightIndex = -1) {
+  // Every option on the map at once: the alternatives in grey, the one being
+  // recommended in mode colours on top. Seeing only the winner hides that a
+  // choice was made at all.
+  const itineraries = [plan.recommended, ...(plan.alternatives || [])];
+  const chosenIndex = highlightIndex >= 0 ? highlightIndex + 1 : 0;
+
+  let features = [];
+  let coords = [];
+  itineraries.forEach((itinerary, index) => {
+    const built = itineraryFeatures(itinerary, { chosen: index === chosenIndex });
+    features = features.concat(built.features);
+    coords = coords.concat(built.coords);
+  });
+  // Chosen last so it paints over the greyed alternatives.
+  features.sort((a, b) => a.properties.chosen - b.properties.chosen);
+
   setSource("route", features);
   fitTo(coords);
   legend("How the freight travels", MODES.map((m) => [MODE_COLOUR[m], {
     road: "By road", rail: "By rail", water: "By river barge", air: "By air",
-  }[m]]), "A change of colour is a transhipment: unloading and reloading costs time and money.");
+  }[m]]).concat([["#9aa4ad", "Other options"]]),
+    "A change of colour is a transhipment: unloading and reloading costs time and money.");
 }
 
 function renderRoute(plan) {
   const s = plan.recommended.summary;
-  drawItinerary(plan.recommended);
+  drawPlan(plan);
 
   const legs = plan.recommended.legs.map((leg) => {
     if (leg.type === "transfer") {
@@ -476,7 +442,12 @@ function renderRoute(plan) {
        door-to-door figure.</p>`;
 
   document.querySelectorAll(".alt").forEach((element) => {
-    element.onclick = () => drawItinerary(plan.alternatives[+element.dataset.alt]);
+    element.onclick = () => {
+      const index = +element.dataset.alt;
+      drawPlan(plan, index);
+      document.querySelectorAll(".alt").forEach((el) => el.classList.remove("chosen"));
+      element.classList.add("chosen");
+    };
   });
 }
 
@@ -487,7 +458,6 @@ async function drawRisk() {
   const data = await api(`/network/segments?month=${$("riskMonth").value}`);
   const { segments, risk_model } = data;
   state.segments = segments;
-  refreshClosureOptions();
   // Thousands of sub-kilometre link roads bury the corridors that matter.
   const minKm = +$("minLength").value;
   const hazard = $("hazard").value;
@@ -553,7 +523,7 @@ function rampColour(value, worst, best) {
   // green with four stops failed the colour-difference checks; three stops with
   // a clear lightness step do not.
   const t = Math.max(0, Math.min(1, (value - worst) / (best - worst || 1)));
-  const stops = [[208, 59, 59], [201, 133, 0], [25, 158, 112]];
+  const stops = [[208, 59, 59], [237, 161, 0], [27, 175, 122]];
   const scaled = t * (stops.length - 1);
   const i = Math.min(stops.length - 2, Math.floor(scaled));
   const f = scaled - i;
@@ -591,8 +561,8 @@ async function drawAccessibility() {
   fitTo(data.places.map((p) => [p.lon, p.lat]));
   legend(
     higherIsBetter ? "How well connected" : "Travel time",
-    [["rgb(25,158,112)", higherIsBetter ? "Well connected" : "A short trip"],
-     ["rgb(201,133,0)", higherIsBetter ? "Getting by" : "Half a day"],
+    [["rgb(27,175,122)", higherIsBetter ? "Well connected" : "A short trip"],
+     ["rgb(237,161,0)", higherIsBetter ? "Getting by" : "Half a day"],
      ["rgb(208,59,59)", higherIsBetter ? "Cut off" : "A day or more"]],
     higherIsBetter
       ? "Blends time to a market, cold store and the national gateway, plus how much worse the monsoon makes it."
@@ -618,67 +588,109 @@ async function drawAccessibility() {
   });
 }
 
-/* ------------------------------------------------------------- siting ---- */
+/* ------------------------------------------------------------ analysis --- */
 
-async function evaluateSites() {
-  const button = $("siteBtn");
+async function runAnalysis() {
+  const button = $("analysisRun");
   const label = button.dataset.label || (button.dataset.label = button.textContent);
   button.disabled = true;
-  button.textContent = "Comparing sites…";
+  button.textContent = "Analysing…";
   try {
-    const data = await api("/accessibility/facility-impact", {
+    const data = await api(`/routing/compare?month=${$("month").value}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        candidate_ids: [...state.candidates],
-        facility_type: $("facilityType").value,
-        month: $("accessMonth").value,
-        threshold_hours: +$("threshold").value,
+        origin: $("origin").value,
+        destination: $("destination").value,
+        value_of_time: +$("vot").value,
       }),
     });
-
-    setSource("route", []);
-    setSource("segments", []);
-    const best = Math.max(1, ...data.ranked_sites.map((r) => r.population_newly_covered));
-    setSource("places", data.ranked_sites.map((r) => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [r.site.lon, r.site.lat] },
-      properties: {
-        name: r.site.name,
-        colour: rampColour(r.population_newly_covered, 0, best),
-        popup: `<strong>${esc(r.site.name)}</strong><br>
-                brings <b>${r.population_newly_covered.toLocaleString("en-IN")}</b> people
-                within ${$("threshold").value} h<br>
-                mean regional score ${r.mean_score_before} → ${r.mean_score_after}`,
-      },
-    })));
-    fitTo(data.ranked_sites.map((r) => [r.site.lon, r.site.lat]));
-    legend("Places brought within reach",
-           [["rgb(25,158,112)", "Helps most"], ["rgb(208,59,59)", "Helps least"]],
-           "Ranked by how many towns and villages come within the chosen travel time.");
-
-    // Ranked by settlements reached, so that is the leading column. Population
-    // is shown next to it with its coverage stated, because OSM records a
-    // population for only a minority of settlements.
-    const coverage = Math.round((data.population_coverage ?? 0) * 100);
-    $("sitingResult").innerHTML = `
-      <h2 style="margin-top:16px">Ranked sites</h2>
-      <table><thead><tr><th>#</th><th>Site</th><th>Settlements</th><th>People*</th><th>Gain</th></tr></thead>
-      <tbody>${data.ranked_sites.map((r, i) => `<tr>
-        <td>${i + 1}</td><td>${esc(r.site.name)}</td>
-        <td>${r.settlements_newly_covered.toLocaleString("en-IN")}</td>
-        <td>${r.population_newly_covered.toLocaleString("en-IN")}</td>
-        <td>+${r.mean_score_gain}</td></tr>`).join("")}</tbody></table>
-      <p class="note">Ranked by settlements brought within ${data.threshold_hours} h.
-         Baseline: ${data.baseline_settlements_covered.toLocaleString("en-IN")} settlements already covered.</p>
-      <p class="note">*OSM records a population for only ${coverage}% of settlements,
-         so the population column understates reach and is not what the ranking uses.</p>`;
+    renderAnalysis(data);
   } catch (error) {
-    $("sitingResult").innerHTML = `<div class="error">${esc(error.message)}</div>`;
+    $("analysisResult").innerHTML = `<div class="error">${esc(error.message)}</div>`;
   } finally {
     button.disabled = false;
     button.textContent = label;
   }
+}
+
+function renderAnalysis(data) {
+  const usable = data.options.filter((o) => o.available);
+  const missing = data.options.filter((o) => !o.available);
+  const best = data.best;
+  const byKey = Object.fromEntries(usable.map((o) => [o.key, o]));
+
+  const rows = usable.map((o) => {
+    const tags = [];
+    if (o.key === best.overall) tags.push("Recommended");
+    if (o.key === best.cheapest) tags.push("Cheapest");
+    if (o.key === best.fastest) tags.push("Fastest");
+    if (o.key === best.most_reliable) tags.push("Most reliable");
+    return `<tr class="${o.key === best.overall ? "winner" : ""}">
+      <td>${esc(o.label)}${tags.length
+        ? `<br><span class="badge best">${esc(tags.join(" · "))}</span>` : ""}</td>
+      <td>${esc(o.mode_chain.join(" → "))}</td>
+      <td>${fmtH(o.total_hours)}</td>
+      <td>${fmtRs(o.cost_per_tonne)}</td>
+      <td>${fmtH(o.expected_delay_hours)}</td>
+    </tr>`;
+  }).join("");
+
+  // The prose is the point of this view: a table of seven rows still leaves the
+  // reader to work out what the trade-off actually is.
+  const rec = byKey[best.overall];
+  const cheap = byKey[best.cheapest];
+  const quick = byKey[best.fastest];
+  const timeSaved = rec.total_hours - quick.total_hours;
+  const extraCost = quick.cost_per_tonne - rec.cost_per_tonne;
+  const savings = rec.cost_per_tonne - cheap.cost_per_tonne;
+  const slower = cheap.total_hours - rec.total_hours;
+
+  const paragraphs = [];
+  paragraphs.push(
+    `Moving freight from <b>${esc(data.origin.name)}</b> to
+     <b>${esc(data.destination.name)}</b> in <b>${esc(MONTH_NAME[data.month] || data.month)}</b>,
+     there are <b>${data.distinct_plans}</b> genuinely different ways to do it.
+     The recommendation is <b>${esc(rec.mode_chain.join(" → "))}</b>:
+     ${fmtH(rec.total_hours)} door to door at ${fmtRs(rec.cost_per_tonne)} per tonne.`);
+
+  if (quick.key !== best.overall && timeSaved > 0.5) {
+    paragraphs.push(
+      `Flying or otherwise rushing it saves <b>${fmtH(timeSaved)}</b> but costs
+       <b>${fmtRs(extraCost)}</b> more per tonne — worth it only if the cargo is
+       losing more than that in the time saved.`);
+  }
+  if (cheap.key !== best.overall && savings > 1) {
+    paragraphs.push(
+      `The cheapest option saves <b>${fmtRs(savings)}</b> per tonne but takes
+       <b>${fmtH(slower)}</b> longer.`);
+  }
+  if (rec.transhipments > 0) {
+    paragraphs.push(
+      `The recommended plan changes mode <b>${rec.transhipments}</b>
+       time${rec.transhipments > 1 ? "s" : ""}. Each change means unloading and
+       reloading, which is where multimodal plans usually lose the time they
+       gain on the line haul.`);
+  }
+  paragraphs.push(
+    `Across all options the spread is <b>${fmtRs(data.spread.cost_per_tonne)}</b>
+     per tonne and <b>${fmtH(data.spread.hours)}</b> — the cost of choosing badly
+     on this lane.`);
+
+  $("analysisResult").innerHTML = `
+    <div class="verdict">${paragraphs.join("</p><p style='margin:10px 0 0'>")}</div>
+    <h2>Every option</h2>
+    <div style="overflow-x:auto">
+      <table class="compare"><thead><tr>
+        <th>Option</th><th>Route</th><th>Time</th><th>Cost/t</th><th>Delay</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    ${missing.length ? `<h2 style="margin-top:16px">Not possible on this lane</h2>
+      <p class="note">${missing.map((o) =>
+        `<b>${esc(o.label)}</b> — ${esc(o.reason)}`).join("<br>")}</p>` : ""}
+    <p class="note">"Delay" is the time this shipment can expect to lose to
+       landslides and flooding in this month, already inside the door-to-door
+       figure.</p>`;
 }
 
 /* --------------------------------------------------------------- wiring -- */
@@ -692,23 +704,31 @@ document.querySelectorAll("nav button").forEach((button) => {
     if (button.dataset.tab === "risk") drawRisk();
     if (button.dataset.tab === "access") drawAccessibility();
     if (button.dataset.tab === "route") planRoute();
+    if (button.dataset.tab === "analysis") runAnalysis();
   };
 });
 
 $("priority").onchange = () => { applyPriority(); planRoute(); };
 $("cargo").onchange = () => { applyCargo(); planRoute(); };
 $("month").onchange = planRoute;
-$("closure").onchange = planRoute;
 $("planBtn").onclick = planRoute;
-$("siteBtn").onclick = evaluateSites;
-$("riskMonth").onchange = drawRisk;
+$("analysisRun").onclick = runAnalysis;
+function flashApplied(id) {
+  const note = $(id);
+  note.hidden = false;
+  clearTimeout(note._timer);
+  note._timer = setTimeout(() => (note.hidden = true), 2200);
+}
+
+// The map redraws on Apply, not on every control change: at 11,000 segments a
+// redraw is visible work, and a map that lurches while you are still choosing
+// gives no moment where you can see that your choice landed.
+$("riskApply").onclick = () => drawRisk().then(() => flashApplied("riskApplied"));
+$("accessApply").onclick = () =>
+  drawAccessibility().then(() => flashApplied("accessApplied"));
 $("minLength").oninput = (e) => ($("minLengthL").textContent = e.target.value);
-$("minLength").onchange = drawRisk;
-$("hazard").onchange = drawRisk;
-$("accessMonth").onchange = drawAccessibility;
-$("accessMetric").onchange = drawAccessibility;
+$("riskMonth").onchange = () => drawRisk().then(() => flashApplied("riskApplied"));
 $("vot").oninput = (e) => ($("votLabel").textContent = "₹" + e.target.value);
-$("threshold").oninput = (e) => ($("thresholdL").textContent = e.target.value);
 for (const key of ["Cost", "Time", "Risk"]) {
   $("w" + key).oninput = (e) => ($("w" + key + "L").textContent = (+e.target.value).toFixed(2));
 }

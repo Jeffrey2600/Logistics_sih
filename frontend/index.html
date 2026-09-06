@@ -18,7 +18,7 @@
     <button data-tab="route" class="active">Plan a shipment</button>
     <button data-tab="risk">Monsoon risk</button>
     <button data-tab="access">Who is cut off</button>
-    <button data-tab="siting">Where to build</button>
+    <button data-tab="analysis">Analysis</button>
   </nav>
 
   <section class="panel" id="tab-route">
@@ -54,10 +54,6 @@
     <label>How can it travel?</label>
     <div class="chips" id="modeChips"></div>
     <p class="hint">Tap to turn a mode off. Changing modes mid-journey costs time and money.</p>
-
-    <label for="closure">Test a road closure</label>
-    <select id="closure"><option value="">Nothing closed</option></select>
-    <p class="hint">Simulate a landslide shutting a highway and see where the freight goes instead.</p>
 
     <details id="advanced">
       <summary>Advanced: tune the trade-off</summary>
@@ -98,6 +94,10 @@
     <input type="range" id="minLength" min="0" max="25" step="1" value="5">
     <p class="hint">The network has thousands of short link roads. Raise this to
       see only the corridors that carry freight between towns.</p>
+    <div class="actions">
+      <button class="primary" id="riskApply">Apply to map</button>
+      <p class="applied" id="riskApplied" hidden>Map updated</p>
+    </div>
     <div id="riskResult"></div>
   </section>
 
@@ -113,27 +113,24 @@
       <option value="hours_to_coldstore">Travel time to the nearest cold store</option>
       <option value="hours_to_gateway">Travel time to Guwahati or Siliguri</option>
     </select>
+    <div class="actions">
+      <button class="primary" id="accessApply">Apply to map</button>
+      <p class="applied" id="accessApplied" hidden>Map updated</p>
+    </div>
     <div id="accessResult"></div>
   </section>
 
-  <section class="panel" id="tab-siting" hidden>
-    <p class="lede">If you could build one new facility, where would it help most?
-      Compare sites before anything is built.</p>
-    <label for="facilityType">What would you build?</label>
-    <select id="facilityType">
-      <option value="coldstore">A cold store</option>
-      <option value="market">A market / mandi</option>
-    </select>
-    <label for="threshold">Counts places within <span id="thresholdL">10</span> hours of it</label>
-    <input type="range" id="threshold" min="2" max="24" step="1" value="10">
-    <p class="hint">A farmer will not haul produce much further than this in a day.</p>
-    <label for="candidateSearch">Candidate sites <span class="note" id="candCount"></span></label>
-    <input type="search" id="candidateSearch" placeholder="Type to filter settlements…">
-    <select id="candidateList" size="8" multiple></select>
-    <div class="chips" id="candidateChosen"></div>
-    <button class="primary" id="siteBtn">Compare these sites</button>
-    <div id="sitingResult"></div>
+  <section class="panel" id="tab-analysis" hidden>
+    <p class="lede">Every sensible way to move this consignment, side by side —
+      what each one costs, how long it takes, and which is worth choosing.</p>
+    <p class="hint">Uses the origin, destination and month set on
+      <b>Plan a shipment</b>.</p>
+    <div class="actions">
+      <button class="primary" id="analysisRun">Analyse this lane</button>
+    </div>
+    <div id="analysisResult"></div>
   </section>
+
 </div>
 
 <div style="position:relative">

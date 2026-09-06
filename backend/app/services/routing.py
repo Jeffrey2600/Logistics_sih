@@ -200,6 +200,110 @@ def _plan_on(graph, network, source, sink, origin, destination, month, resolved,
     }
 
 
+# The scenarios the analysis view compares. Each is a question a planner would
+# actually ask - "what if we could only use road?", "what does reliability
+# cost?" - rather than a parameter sweep.
+SCENARIOS = (
+    ("recommended", "Recommended", None, {"cost": 0.4, "time": 0.4, "risk": 0.2}),
+    ("cheapest", "Lowest freight cost", None, {"cost": 0.85, "time": 0.1, "risk": 0.05}),
+    ("fastest", "Fastest door to door", None, {"cost": 0.1, "time": 0.85, "risk": 0.05}),
+    ("reliable", "Most reliable", None, {"cost": 0.2, "time": 0.25, "risk": 0.55}),
+    ("road_only", "Road only", ["road"], None),
+    ("surface", "Surface only (no air)", ["road", "rail", "water"], None),
+    ("rail_water", "Rail and waterway", ["rail", "water", "road"], None),
+)
+
+
+def compare_options(
+    network: Network,
+    risk_model: RiskModel,
+    origin: str,
+    destination: str,
+    month: str = "jul",
+    value_of_time: float = 150.0,
+) -> dict:
+    """Every sensible way to move this consignment, side by side.
+
+    The route planner answers "what should I do". This answers "what are my
+    options and what does each one cost me", which is the question a planner
+    actually brings - and it makes the trade-off visible instead of hiding it
+    behind a single recommendation.
+
+    A scenario that cannot be satisfied is reported as unavailable rather than
+    omitted: "there is no rail on this lane" is itself a finding.
+    """
+    options = []
+    for key, label, modes, weights in SCENARIOS:
+        try:
+            plan = plan_route(
+                network, risk_model, origin, destination, month=month,
+                weights=weights, modes=modes, value_of_time=value_of_time,
+                alternatives=0,
+            )
+        except RoutingError as exc:
+            options.append({"key": key, "label": label, "available": False,
+                            "reason": str(exc)})
+            continue
+
+        summary = plan["recommended"]["summary"]
+        options.append({
+            "key": key,
+            "label": label,
+            "available": True,
+            "legs": plan["recommended"]["legs"],
+            **summary,
+        })
+
+    usable = [o for o in options if o["available"]]
+    if not usable:
+        raise RoutingError("no route exists between these places")
+
+    cheapest = min(usable, key=lambda o: o["cost_per_tonne"])
+    quickest = min(usable, key=lambda o: o["total_hours"])
+    # Least expected delay, not lowest peak segment risk: a lane can have one
+    # bad stretch it barely uses and still be the dependable choice.
+    safest = min(usable, key=lambda o: o["expected_delay_hours"])
+
+    # "Overall" is the balanced scenario, not the lowest objective score across
+    # scenarios. Each scenario minimises a *different* objective, so those
+    # scores are not on one scale and picking the smallest compares apples to
+    # oranges - it was naming "most reliable" the overall winner purely because
+    # a risk-weighted objective produces smaller numbers.
+    best = next(o for o in usable if o["key"] == "recommended")
+
+    # Distinct plans, so "cheapest" and "recommended" collapse into one row when
+    # they are the same journey rather than appearing twice.
+    seen: dict[tuple, dict] = {}
+    for option in usable:
+        signature = tuple(leg.get("edge_id") for leg in option["legs"])
+        seen.setdefault(signature, option).setdefault("also_known_as", [])
+        if seen[signature] is not option:
+            seen[signature]["also_known_as"].append(option["label"])
+
+    return {
+        "origin": network.places[origin].to_dict(),
+        "destination": network.places[destination].to_dict(),
+        "month": month,
+        "value_of_time": value_of_time,
+        "options": options,
+        "distinct_plans": len(seen),
+        "best": {
+            "overall": best["key"],
+            "cheapest": cheapest["key"],
+            "fastest": quickest["key"],
+            "most_reliable": safest["key"],
+        },
+        "spread": {
+            "cost_per_tonne": round(
+                max(o["cost_per_tonne"] for o in usable)
+                - min(o["cost_per_tonne"] for o in usable), 2),
+            "hours": round(
+                max(o["total_hours"] for o in usable)
+                - min(o["total_hours"] for o in usable), 2),
+        },
+    }
+
+
 def seasonal_comparison(
     network: Network,
     risk_model: RiskModel,
