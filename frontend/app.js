@@ -17,6 +17,25 @@ const MODE_COLOUR = { road: "#4da3ff", rail: "#a371f7", water: "#2dd4bf", air: "
 // so the map never depends on hue alone.
 const RISK_COLOUR = { low: "#199e70", elevated: "#c98500", severe: "#d03b3b" };
 const RISK_LABEL = { low: "Usually open", elevated: "Often disrupted", severe: "Frequently blocked" };
+// The server bands the combined figure; the map may be showing one hazard.
+const bandOf = (p) => (p < 0.15 ? "low" : p < 0.35 ? "elevated" : "severe");
+
+function floodNote(model) {
+  if (!model || !model.available) {
+    return `<p class="note">Flood risk is not included: elevation data has not
+      been built. Run <code>data/ingest/fetch_elevation.py</code>.</p>`;
+  }
+  const covered = model.elevation_coverage ?? 0;
+  if (covered < 0.95) {
+    // Silence here would paint the unmeasured half of the valley green.
+    return `<p class="note">Flood risk covers only ${(covered * 100).toFixed(0)}%
+      of the network — the rest has no elevation yet and is shown as
+      landslide risk alone, not as safe.</p>`;
+  }
+  return `<p class="note">Flood risk from ground elevation, terrain and season.
+    ${model.flood_dominated.toLocaleString("en-IN")} of these roads are at more
+    risk from flooding than from landslides.</p>`;
+}
 const RISK_WIDTH = { low: 0.6, elevated: 1.0, severe: 1.7 };
 
 // Named trade-offs, so nobody has to reason about three abstract weights.
@@ -459,6 +478,8 @@ async function drawRisk() {
   refreshClosureOptions();
   // Thousands of sub-kilometre link roads bury the corridors that matter.
   const minKm = +$("minLength").value;
+  const hazard = $("hazard").value;
+  const riskOf = (s) => (hazard === "probability" ? s.risk.probability : s.risk[hazard]);
   const shown = segments.filter(
     (s) => state.riskModes.has(s.mode) && s.distance_km >= minKm,
   );
@@ -467,13 +488,14 @@ async function drawRisk() {
     type: "Feature",
     geometry: { type: "LineString", coordinates: s.geometry },
     properties: {
-      colour: RISK_COLOUR[s.risk.band],
-      widthScale: RISK_WIDTH[s.risk.band] ?? 1,
+      colour: RISK_COLOUR[bandOf(riskOf(s))],
+      widthScale: RISK_WIDTH[bandOf(riskOf(s))] ?? 1,
       popup: `<strong>${esc(s.label)}</strong><br>
               ${esc(s.mode)} · ${esc(s.route_ref)} · ${esc(s.terrain)} · ${s.distance_km} km<br>
-              <b>${esc(RISK_LABEL[s.risk.band] || s.risk.band)}</b> —
-              about a ${(s.risk.probability * 100).toFixed(0)}% chance of being
-              disrupted somewhere along it this month`,
+              <b>${esc(RISK_LABEL[bandOf(riskOf(s))])}</b> —
+              about a ${(riskOf(s) * 100).toFixed(0)}% chance of disruption this month<br>
+              <span style="opacity:.75">landslide ${(s.risk.landslide * 100).toFixed(0)}%
+              · flood ${(s.risk.flood * 100).toFixed(0)}%</span>`,
     },
   })));
   setSource("places", []);
@@ -486,10 +508,12 @@ async function drawRisk() {
 
   // Prefer segments a reader can place on a map: an unnamed junction pair is
   // a true finding but an unusable one.
-  const worst = shown.filter((s) => s.named).slice(0, 12).map((s) => `<tr>
+  const worst = shown.filter((s) => s.named)
+    .sort((a, b) => riskOf(b) - riskOf(a))
+    .slice(0, 12).map((s) => `<tr>
       <td>${esc(s.label)}</td>
-      <td>${esc(s.route_ref)}</td>
-      <td><span class="badge ${esc(s.risk.band)}" title="${esc(RISK_LABEL[s.risk.band] || "")}">${(s.risk.probability * 100).toFixed(0)}%</span></td>
+      <td>${esc(s.risk.dominant === "flood" ? "Flood" : "Landslide")}</td>
+      <td><span class="badge ${esc(bandOf(riskOf(s)))}">${(riskOf(s) * 100).toFixed(0)}%</span></td>
     </tr>`).join("");
 
   const history = data.landslide_history || { segments: 0, total: 1 };
@@ -502,11 +526,12 @@ async function drawRisk() {
       + "probably higher than shown.";
 
   $("riskResult").innerHTML = `
-    <table><thead><tr><th>Segment</th><th>Route</th><th>Risk</th></tr></thead>
+    <table><thead><tr><th>Road</th><th>Main hazard</th><th>Risk</th></tr></thead>
     <tbody>${worst}</tbody></table>
     <p class="note">Showing ${shown.length.toLocaleString("en-IN")} roads longer than
        ${minKm} km${hidden > 0 ? `; ${hidden.toLocaleString("en-IN")} shorter links hidden` : ""}.</p>
-    <p class="note">${esc(historyNote)}</p>`;
+    <p class="note">${esc(historyNote)}</p>
+    ${floodNote(data.flood_model)}`;
 }
 
 /* ------------------------------------------------------ accessibility ---- */
@@ -667,6 +692,7 @@ $("siteBtn").onclick = evaluateSites;
 $("riskMonth").onchange = drawRisk;
 $("minLength").oninput = (e) => ($("minLengthL").textContent = e.target.value);
 $("minLength").onchange = drawRisk;
+$("hazard").onchange = drawRisk;
 $("accessMonth").onchange = drawAccessibility;
 $("accessMetric").onchange = drawAccessibility;
 $("vot").oninput = (e) => ($("votLabel").textContent = "₹" + e.target.value);

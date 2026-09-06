@@ -105,7 +105,7 @@ immediately — rebuilding them would otherwise mean a 10-15 minute walk over
 rate-limited Overpass mirrors.
 
 ```bash
-python -m pytest tests -q     # 191 tests
+python -m pytest tests -q     # 248 tests
 ```
 
 ## Deployment
@@ -127,6 +127,7 @@ every data layer still renders with no internet at all.
 | Landslide occurrences | NASA COOLR / Global Landslide Catalog | Fetcher written, **not yet run** — host still blocked (see `docs/NETWORK_ACCESS.md`) |
 | Road network at scale | OpenStreetMap via Overpass | **Built** — 14,531 ways, 6,502 nodes, 25,360 km, 98% connected, all 46 seed places anchored |
 | Populated places | OpenStreetMap via Overpass | **Built** — 6,568 named settlements; 5,609 in the network, 399 further than 20 km from any mapped road |
+| Ground elevation | Copernicus DEM via Open-Meteo | **Built** — every network node, 8 m to 4,016 m; drives the flood model |
 
 ```bash
 python data/ingest/fetch_rainfall.py       # verified working
@@ -202,39 +203,55 @@ anyone trusts a number from it.
 
 These are real, and stating them is better than being asked about them.
 
-1. **There is no live road-closure feed, at any price.** State PWD and NHIDCL
+0. **Two hazards are modelled, not all of them.** Monsoon landslides and river
+   flooding. Not modelled: earthquakes — and the NER is in Seismic Zone V,
+   India's highest, so a major quake is the largest single threat to these
+   corridors and this platform says nothing about it — nor bandhs, blockades,
+   bridge failures or border closures. Seismic risk needs a hazard model
+   crossed with structural vulnerability, which is a research project rather
+   than a data join.
+
+1. **The flood model has no observed flood extent.** It infers susceptibility
+   from elevation, terrain and season, and calibrates with a single constant
+   (`FLOODPLAIN_AFFECTED_SHARE`) standing in for what share of floodplain road
+   is actually cut in a typical monsoon. Assam's flooding is shaped by
+   embankments, and a breach is a local event no terrain model anticipates.
+   A Sentinel-1 or Global Flood Database join would replace that constant with
+   evidence and is the highest-value next data source.
+
+2. **There is no live road-closure feed, at any price.** State PWD and NHIDCL
    publish closures as irregular press notes, with no machine-readable archive.
    The platform therefore *predicts* risk from rainfall and terrain rather than
    observing closures. Closing that loop needs a ground-truth channel — operator
    and driver reports collected through the platform itself — which is designed
    for but not built.
-2. **The ML labels are weak.** With no closure archive, a "disruption" label is
+3. **The ML labels are weak.** With no closure archive, a "disruption" label is
    proxied by a catalogue landslide recorded on that segment in that month.
    COOLR is media-reported, so it over-samples slides near towns and
    under-samples remote stretches, and reporting density rose after ~2010 for
    reasons unrelated to slope stability. `train.py` refuses to fit on too few
    positives rather than produce a confident-looking artefact. Treat the learned
    model as a refinement of the analytic prior, not as independent evidence.
-3. **Freight tariffs are modelled, not sourced.** Real rates are commercial.
+4. **Freight tariffs are modelled, not sourced.** Real rates are commercial.
    Every rate, speed and penalty lives in `backend/app/config.py` with a source
    note, so a surveyed number can replace an assumed one without touching the
    algorithms.
-4. **Population data is 15% complete, and that is the biggest caveat here.**
+5. **Population data is 15% complete, and that is the biggest caveat here.**
    OSM records a population tag on only 837 of 5,609 settlements. Ranking
    anything by population therefore ranks where contributors happened to fill
    in a number, not where people live — on the real network that reversed the
    cold-store recommendation, so facility siting ranks by *settlements reached*
    and reports `population_coverage` alongside every population figure. Joining
    the Census 2011 village directory would fix this properly.
-5. **399 settlements are more than 20 km from any mapped road.** They are
+6. **399 settlements are more than 20 km from any mapped road.** They are
    reported rather than dropped, because the honest reading is ambiguous:
    either the place is genuinely that remote, or OSM has no road there. Both
    matter to MDoNER, and telling them apart needs ground truth.
-6. **Performance is adequate, not tuned.** The accessibility index over 10,572
+7. **Performance is adequate, not tuned.** The accessibility index over 10,572
    nodes takes about 16 s cold and 1.1 s warm, because the layered graph is
    cached per (month, weights, modes, closures). A first request after startup
    is slow; everything after it is not.
-7. **Accessibility is scored at nodes, not over a population surface.** Proper
+8. **Accessibility is scored at nodes, not over a population surface.** Proper
    spatial equity work would use a WorldPop raster and travel-time isochrones.
 
 ## Layout
@@ -245,7 +262,8 @@ backend/app/
   core/
     network.py         seed loading, mode-layered graph construction
     costing.py         generalised cost, transfer penalties
-    risk.py            analytic and learned disruption models
+    risk.py            analytic and learned landslide models, hazard combination
+    flood.py           river flood susceptibility from elevation and season
     rainfall.py        per-place NASA POWER index, with fallback
     features.py        feature extraction shared by training and inference
   services/
@@ -257,11 +275,12 @@ data/seed/             the committed network
 data/ingest/
   osm.py               OSM topology: parsing, contraction, classification
   places.py            settlement parsing and the last-mile road join
+  fetch_elevation.py   Copernicus DEM heights for every node
   fetch_osm.py         Overpass CLI, with an offline --from-file path
   fetch_places.py      populated-places CLI
   fetch_rainfall.py    NASA POWER climatology
   fetch_landslides.py  NASA COOLR, snapped to segments
   build_training_set.py
 ml/landslide/          model training
-tests/                 191 tests
+tests/                 248 tests
 ```

@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from ...config import MODES
+from ...core import flood
 from ...core.network import JUNCTION_KIND
 from ..deps import get_network, get_risk_model
 
@@ -83,6 +84,7 @@ def list_segments(
         # The per-factor breakdown is only wanted when a user clicks one
         # segment. Shipping it for all 11,000 costs megabytes on every load.
         risk.pop("drivers", None)
+        risk.pop("per_trip_probability", None)
 
         rows.append(
             {
@@ -115,6 +117,15 @@ def list_segments(
         "landslide_history": {
             "segments": sum(1 for r in rows if r["landslide_events"]),
             "total": len(rows),
+        },
+        # Flooding needs elevation. Without it the hazard is silently absent
+        # rather than zero-risk, and the map should say so.
+        "flood_model": {
+            "available": flood.data_available(),
+            # A segment with no elevation scores zero flood risk, which looks
+            # exactly like a safe road. Partial coverage has to be visible.
+            "elevation_coverage": round(flood.coverage(network.places), 3),
+            "flood_dominated": sum(1 for r in rows if r["risk"]["dominant"] == "flood"),
         },
         "segments": rows,
     }

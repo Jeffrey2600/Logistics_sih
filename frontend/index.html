@@ -83,6 +83,14 @@
     <label for="riskMonth">Month</label>
     <select id="riskMonth"></select>
     <p class="hint">Slide through the year to watch the network deteriorate and recover.</p>
+    <label for="hazard">Hazard</label>
+    <select id="hazard">
+      <option value="probability" selected>Both — landslide and flood</option>
+      <option value="landslide">Landslides and washouts only</option>
+      <option value="flood">River flooding only</option>
+    </select>
+    <p class="hint">Landslides hit steep hill roads; floods hit the flat valley
+      floor. They are different roads, so they are modelled separately.</p>
     <label>Show</label>
     <div class="chips" id="riskModeChips"></div>
     <label for="minLength">Roads longer than <span id="minLengthL">5</span> km</label>

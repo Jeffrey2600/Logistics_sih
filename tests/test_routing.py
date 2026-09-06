@@ -18,13 +18,17 @@ def test_returns_connected_itinerary(network, risk_model):
 
 
 def test_monsoon_costs_more_time_than_dry_season(network, risk_model):
-    dry = plan(network, risk_model, "AZL", "GAU", month="jan")["recommended"]["summary"]
-    wet = plan(network, risk_model, "AZL", "GAU", month="jul")["recommended"]["summary"]
+    """Surface freight only. With air allowed the model may answer a bad
+    monsoon by flying, which is correct behaviour but not what this asserts."""
+    surface = ["road", "rail", "water"]
+    dry = plan(network, risk_model, "AZL", "GAU", month="jan", modes=surface)["recommended"]["summary"]
+    wet = plan(network, risk_model, "AZL", "GAU", month="jul", modes=surface)["recommended"]["summary"]
     assert wet["total_hours"] > dry["total_hours"]
 
 
 def test_seasonal_comparison_reports_a_delta(network, risk_model):
-    result = seasonal_comparison(network, risk_model, "AZL", "GAU", alternatives=0)
+    result = seasonal_comparison(network, risk_model, "AZL", "GAU", alternatives=0,
+                                 modes=["road", "rail", "water"])
     assert result["delta"]["hours"] > 0
     assert result["dry_season"]["month"] == "jan"
     assert result["monsoon"]["month"] == "jul"

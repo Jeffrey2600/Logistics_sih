@@ -18,6 +18,7 @@ import math
 from dataclasses import dataclass
 from typing import Protocol
 
+from . import flood
 from ..config import EXPECTED_CLOSURE_HOURS, MODEL_DIR
 from .rainfall import rain_index
 
@@ -45,13 +46,16 @@ TRIP_EXPOSURE = 0.20
 
 @dataclass(frozen=True)
 class RiskAssessment:
-    """Risk of a single segment in a given month."""
+    """Risk of a single segment in a given month, across all hazards."""
 
     probability: float           # 0-1 chance the segment is disrupted this month
     per_trip_probability: float  # 0-1 chance a single consignment is caught by it
     expected_delay_hours: float  # per-trip probability-weighted closure time
-    band: str                    # low | moderate | high | severe
+    band: str                    # low | elevated | severe
     drivers: dict[str, float]    # per-factor contribution, for explainability
+    landslide: float = 0.0       # this hazard's own monthly probability
+    flood: float = 0.0
+    dominant: str = "landslide"  # which hazard drives this segment
 
     def to_dict(self) -> dict:
         return {
@@ -59,8 +63,25 @@ class RiskAssessment:
             "per_trip_probability": round(self.per_trip_probability, 4),
             "expected_delay_hours": round(self.expected_delay_hours, 2),
             "band": self.band,
+            # Kept separate because the two hazards strike opposite ground: a
+            # landslide needs a steep slope, a flood a flat one near a river.
+            # One number would let a hill road's landslide risk stand in for a
+            # valley road's flood risk, and both would be wrong.
+            "landslide": round(self.landslide, 4),
+            "flood": round(self.flood, 4),
+            "dominant": self.dominant,
             "drivers": {k: round(v, 4) for k, v in self.drivers.items()},
         }
+
+
+def combine(landslide: float, flood_p: float) -> float:
+    """Chance of being disrupted by either hazard.
+
+    Independent, not additive: two 60% hazards do not make 120%. Their triggers
+    do share a monsoon, so treating them as independent slightly understates
+    the joint risk - far less than adding would overstate it.
+    """
+    return 1.0 - (1.0 - landslide) * (1.0 - flood_p)
 
 
 # Three bands, not four. Four warm colours cannot be told apart on a map -
@@ -121,17 +142,28 @@ class AnalyticRiskModel:
 
         closure = EXPECTED_CLOSURE_HOURS.get(terrain, 8.0)
         per_trip = probability * TRIP_EXPOSURE
+        slide_delay = per_trip * closure
+
+        water = flood.assess(edge, month, rain)
+        total = combine(probability, water.probability)
+
         return RiskAssessment(
-            probability=probability,
-            per_trip_probability=per_trip,
-            expected_delay_hours=per_trip * closure,
-            band=_band(probability),
+            probability=total,
+            per_trip_probability=combine(per_trip, water.per_trip_probability),
+            expected_delay_hours=slide_delay + water.expected_delay_hours,
+            band=_band(total),
+            landslide=probability,
+            flood=water.probability,
+            dominant="flood" if water.probability > probability else "landslide",
             drivers={
                 "terrain_base": base,
                 "landslide_history": history,
                 "monsoon_exposure": exposure,
                 "narrow_carriageway": narrow,
                 "rain_index": rain,
+                "flood_lowland": water.drivers["lowland"],
+                "flood_season": water.drivers["season"],
+                "elevation_m": float(water.elevation_m or -1),
             },
         )
 
@@ -157,14 +189,23 @@ class LearnedRiskModel:
         closure = EXPECTED_CLOSURE_HOURS.get(edge.get("terrain", "plain"), 8.0)
         # Reuse the analytic drivers as the explanation surface - the learned
         # model gives a better number, the analytic terms say why.
-        drivers = self._fallback.assess(edge, month).drivers
+        analytic = self._fallback.assess(edge, month)
         per_trip = probability * TRIP_EXPOSURE
+
+        # The learned model predicts landslides only; flooding is a separate
+        # hazard with its own physics and no training labels at all.
+        water = flood.assess(edge, month, rain_index(edge, month))
+        total = combine(probability, water.probability)
+
         return RiskAssessment(
-            probability=probability,
-            per_trip_probability=per_trip,
-            expected_delay_hours=per_trip * closure,
-            band=_band(probability),
-            drivers=drivers,
+            probability=total,
+            per_trip_probability=combine(per_trip, water.per_trip_probability),
+            expected_delay_hours=per_trip * closure + water.expected_delay_hours,
+            band=_band(total),
+            landslide=probability,
+            flood=water.probability,
+            dominant="flood" if water.probability > probability else "landslide",
+            drivers=analytic.drivers,
         )
 
 

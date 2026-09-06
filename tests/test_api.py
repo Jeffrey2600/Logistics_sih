@@ -58,7 +58,9 @@ def test_isolation_returns_422_not_500(client):
 
 
 def test_seasonal_endpoint(client):
-    body = client.post("/routing/seasonal", json={"origin": "AZL", "destination": "GAU"}).json()
+    body = client.post("/routing/seasonal", json={
+        "origin": "AZL", "destination": "GAU", "modes": ["road", "rail", "water"],
+    }).json()
     assert body["delta"]["hours"] > 0
 
 
