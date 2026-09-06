@@ -94,11 +94,16 @@ function addPlaceLabels() {
   if (map.getLayer("places-label")) return;
   map.addLayer({
     id: "places-label", type: "symbol", source: "places",
+    minzoom: 7,
     layout: {
       "text-field": ["get", "name"], "text-size": 11,
       "text-offset": [0, 1.2], "text-anchor": "top",
       "text-font": ["Noto Sans Regular"],
       "text-optional": true,
+      // Five thousand labels at region zoom is a wall of text. Show the
+      // notable places first and the rest only as the reader zooms in.
+      "text-allow-overlap": false,
+      "text-padding": 4,
     },
     paint: { "text-color": "#3a4652", "text-halo-color": "#ffffff", "text-halo-width": 1.4 },
   });
@@ -151,7 +156,9 @@ function addDataLayers() {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 1.8, 7, 3, 10, 6, 13, 9],
       "circle-color": ["get", "colour"],
       "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 5, 0.3, 10, 1.5],
-      "circle-stroke-color": "#0f1419",
+      // A halo that separates overlapping dots without reading as a third
+      // colour: on the light basemap a near-black ring looked like a category.
+      "circle-stroke-color": "#ffffff",
     },
   });
   if (basemapLoaded) addPlaceLabels();
@@ -450,7 +457,11 @@ async function drawRisk() {
   const { segments, risk_model } = data;
   state.segments = segments;
   refreshClosureOptions();
-  const shown = segments.filter((s) => state.riskModes.has(s.mode));
+  // Thousands of sub-kilometre link roads bury the corridors that matter.
+  const minKm = +$("minLength").value;
+  const shown = segments.filter(
+    (s) => state.riskModes.has(s.mode) && s.distance_km >= minKm,
+  );
 
   setSource("segments", shown.map((s) => ({
     type: "Feature",
@@ -483,6 +494,7 @@ async function drawRisk() {
 
   const history = data.landslide_history || { segments: 0, total: 1 };
   const covered = history.segments / Math.max(history.total, 1);
+  const hidden = segments.length - shown.length;
   const historyNote = covered > 0.05
     ? "Estimated from terrain, past landslides on that stretch, how narrow the road is, and how much rain falls there."
     : "Estimated from terrain, road width and rainfall. We have no record of past "
@@ -492,7 +504,9 @@ async function drawRisk() {
   $("riskResult").innerHTML = `
     <table><thead><tr><th>Segment</th><th>Route</th><th>Risk</th></tr></thead>
     <tbody>${worst}</tbody></table>
-    <p class="note">Model: ${esc(risk_model)}. ${esc(historyNote)}</p>`;
+    <p class="note">Showing ${shown.length.toLocaleString("en-IN")} roads longer than
+       ${minKm} km${hidden > 0 ? `; ${hidden.toLocaleString("en-IN")} shorter links hidden` : ""}.</p>
+    <p class="note">${esc(historyNote)}</p>`;
 }
 
 /* ------------------------------------------------------ accessibility ---- */
@@ -515,11 +529,17 @@ async function drawAccessibility() {
   const data = await api(`/accessibility/index?month=${$("accessMonth").value}`);
   const metric = $("accessMetric").value;
   const higherIsBetter = metric === "accessibility_score";
-  const values = data.places.map((p) => p[metric]).filter((v) => v != null);
+  const values = data.places
+    .filter((p) => p.is_settlement)
+    .map((p) => p[metric])
+    .filter((v) => v != null);
   const lo = Math.min(...values), hi = Math.max(...values);
 
   setSource("segments", []);
-  setSource("places", data.places.map((p) => ({
+  // Only settlements. A junction is a graph node with an OSM id for a name, so
+  // drawing them labels the map with "n10262284811".
+  const settlements = data.places.filter((p) => p.is_settlement);
+  setSource("places", settlements.map((p) => ({
     type: "Feature",
     geometry: { type: "Point", coordinates: [p.lon, p.lat] },
     properties: {
@@ -645,6 +665,8 @@ $("closure").onchange = planRoute;
 $("planBtn").onclick = planRoute;
 $("siteBtn").onclick = evaluateSites;
 $("riskMonth").onchange = drawRisk;
+$("minLength").oninput = (e) => ($("minLengthL").textContent = e.target.value);
+$("minLength").onchange = drawRisk;
 $("accessMonth").onchange = drawAccessibility;
 $("accessMetric").onchange = drawAccessibility;
 $("vot").oninput = (e) => ($("votLabel").textContent = "₹" + e.target.value);

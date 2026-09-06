@@ -85,6 +85,10 @@
     <p class="hint">Slide through the year to watch the network deteriorate and recover.</p>
     <label>Show</label>
     <div class="chips" id="riskModeChips"></div>
+    <label for="minLength">Roads longer than <span id="minLengthL">5</span> km</label>
+    <input type="range" id="minLength" min="0" max="25" step="1" value="5">
+    <p class="hint">The network has thousands of short link roads. Raise this to
+      see only the corridors that carry freight between towns.</p>
     <div id="riskResult"></div>
   </section>
 

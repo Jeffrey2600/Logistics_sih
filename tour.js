@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
     proxy: proxy ? { server: proxy, bypass: 'localhost,127.0.0.1' } : undefined });
   const p = await b.newPage({ viewport: { width: 1500, height: 980 } });
-  await p.goto('http://localhost:8001/', { waitUntil: 'domcontentloaded' });
+  await p.goto('http://localhost:8010/', { waitUntil: 'domcontentloaded' });
   await p.waitForSelector('#routeResult .stat b', { timeout: 90000 });
   await p.waitForTimeout(1500);
   await p.screenshot({ path: 'shots/t1-plan.png' });
