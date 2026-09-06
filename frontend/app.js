@@ -698,9 +698,12 @@ function renderAnalysis(data) {
 document.querySelectorAll("nav button").forEach((button) => {
   button.onclick = () => {
     document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b === button));
-    for (const tab of ["route", "risk", "access", "siting"]) {
-      $("tab-" + tab).hidden = tab !== button.dataset.tab;
-    }
+    // Derived from the nav itself, so removing a tab cannot leave a stale name
+    // here - listing them by hand threw on the deleted panel and broke every
+    // tab, not just the one that had gone.
+    document.querySelectorAll(".panel").forEach((panel) => {
+      panel.hidden = panel.id !== "tab-" + button.dataset.tab;
+    });
     if (button.dataset.tab === "risk") drawRisk();
     if (button.dataset.tab === "access") drawAccessibility();
     if (button.dataset.tab === "route") planRoute();

@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const P = 'http://localhost:8060/';
+const P = 'http://localhost:8070/';
 const results = [];
 const check = (name, ok, detail) => results.push({ name, ok, detail });
 

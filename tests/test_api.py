@@ -142,3 +142,38 @@ def test_the_frontend_palette_covers_every_band_the_api_returns(client):
     assert served <= palette, (
         f"the API returns bands the dashboard cannot colour: {sorted(served - palette)}"
     )
+
+
+def test_every_nav_tab_has_a_panel():
+    """Tab switching hid panels from a hand-written list of names. Removing a
+    tab left a stale name in it, which threw on the missing element and broke
+    every tab rather than only the deleted one."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "frontend"
+    html = (root / "index.html").read_text(encoding="utf-8")
+
+    tabs = set(re.findall(r'data-tab="([\w-]+)"', html))
+    panels = set(re.findall(r'id="tab-([\w-]+)"', html))
+    assert tabs == panels, (
+        f"nav buttons without a panel: {sorted(tabs - panels)}; "
+        f"panels without a button: {sorted(panels - tabs)}"
+    )
+
+
+def test_the_dashboard_has_no_handlers_for_removed_controls():
+    """A removed control leaves handlers behind that throw at load."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "frontend"
+    html = (root / "index.html").read_text(encoding="utf-8")
+    app_js = (root / "app.js").read_text(encoding="utf-8")
+
+    ids = set(re.findall(r'id="([\w-]+)"', html))
+    referenced = set(re.findall(r'\$\("([\w-]+)"\)', app_js))
+    # Panels are addressed as "tab-" + name at runtime, so they never appear
+    # literally in a $() call.
+    missing = {r for r in referenced - ids if not r.startswith("tab-")}
+    assert not missing, f"app.js refers to elements that do not exist: {sorted(missing)}"
