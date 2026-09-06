@@ -127,9 +127,9 @@ function addDataLayers() {
   if (!map.getLayer("places-circle")) map.addLayer({
     id: "places-circle", type: "circle", source: "places",
     paint: {
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 4, 10, 9],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 1.8, 7, 3, 10, 6, 13, 9],
       "circle-color": ["get", "colour"],
-      "circle-stroke-width": 1.5,
+      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 5, 0.3, 10, 1.5],
       "circle-stroke-color": "#0f1419",
     },
   });
@@ -205,8 +205,49 @@ function chipRow(container, values, set, onChange) {
   }
 }
 
+function buildCandidatePicker(places) {
+  const search = $("candidateSearch");
+  const list = $("candidateList");
+  const chosen = $("candidateChosen");
+
+  const render = () => {
+    const q = search.value.trim().toLowerCase();
+    // Cap the rendered list: typing narrows it, and nobody scrolls 5,000 rows.
+    const matches = places
+      .filter((p) => !q || p.name.toLowerCase().includes(q))
+      .slice(0, 200);
+    list.innerHTML = matches
+      .map((p) => `<option value="${esc(p.id)}">${esc(p.name)}${p.state ? " — " + esc(p.state) : ""}</option>`)
+      .join("");
+    if (!matches.length) list.innerHTML = `<option disabled>No match</option>`;
+  };
+
+  const renderChosen = () => {
+    chosen.innerHTML = [...state.candidates]
+      .map((id) => `<span class="chip on" data-remove="${esc(id)}">${esc(state.places[id]?.name || id)} ✕</span>`)
+      .join("") || `<span class="note">None selected</span>`;
+    $("candCount").textContent = `${state.candidates.size} selected`;
+    chosen.querySelectorAll("[data-remove]").forEach((el) => {
+      el.onclick = () => { state.candidates.delete(el.dataset.remove); renderChosen(); };
+    });
+  };
+
+  search.oninput = render;
+  list.ondblclick = list.onchange = () => {
+    for (const option of list.selectedOptions) {
+      if (!option.disabled) state.candidates.add(option.value);
+    }
+    renderChosen();
+  };
+
+  render();
+  renderChosen();
+}
+
 async function boot() {
-  const { places } = await api("/network/places");
+  // Junctions outnumber settlements two to one and cannot be chosen
+  // meaningfully - "n4021632273" is not somewhere anyone ships from.
+  const { places } = await api("/network/places?settlements_only=true");
   places.forEach((p) => (state.places[p.id] = p));
   const options = places.map((p) => [p.id, `${p.name} — ${p.state}`]);
 
@@ -217,20 +258,27 @@ async function boot() {
   const modeLabels = MODES.map((m) => [m, m[0].toUpperCase() + m.slice(1)]);
   chipRow($("modeChips"), modeLabels, state.modes);
   chipRow($("riskModeChips"), modeLabels, state.riskModes, drawRisk);
-  chipRow($("candidateChips"), options.map(([id, l]) => [id, state.places[id].name]), state.candidates,
-          () => ($("candCount").textContent = `${state.candidates.size} selected`));
-  $("candCount").textContent = `${state.candidates.size} selected`;
+  // A chip per place was fine for 46 seed towns and is a wall of 5,000
+  // buttons once real settlements land. A filterable list scales.
+  buildCandidatePicker(places);
 
-  await loadSegments();
   planRoute();
 }
 
-async function loadSegments() {
-  const { segments } = await api(`/network/segments?month=${$("riskMonth").value || "jul"}`);
-  state.segments = segments;
-  fillSelect($("closure"), [["", "No closures"]].concat(
-    segments.filter((s) => s.mode === "road")
-      .map((s) => [s.id, `Close ${s.route_ref}: ${s.from_name}–${s.to_name}`])), "");
+// The closure list is built from segments the risk tab has already fetched, so
+// the route tab no longer pulls megabytes of geometry at boot just to fill a
+// dropdown. It is limited to named national highways: an OSM network has
+// thousands of unnamed residential stubs, and a planner closes NH-10, not
+// "n4021632273 – n12296272662".
+function refreshClosureOptions() {
+  const closable = state.segments
+    .filter((s) => s.mode === "road" && s.named && /^NH/i.test(s.route_ref))
+    .sort((a, b) => b.risk.probability - a.risk.probability)
+    .slice(0, 300)
+    .map((s) => [s.id, `Close ${s.route_ref}: ${s.label}`]);
+
+  const current = $("closure").value;
+  fillSelect($("closure"), [["", "No closures"]].concat(closable), current);
 }
 
 /* --------------------------------------------------------------- route --- */
@@ -274,8 +322,7 @@ function drawItinerary(itinerary) {
   const coords = [];
   for (const leg of itinerary.legs) {
     if (leg.type !== "travel") continue;
-    const a = state.places[leg.from], b = state.places[leg.to];
-    const line = [[a.lon, a.lat], [b.lon, b.lat]];
+    const line = [[leg.from_lon, leg.from_lat], [leg.to_lon, leg.to_lat]];
     coords.push(...line);
     features.push({
       type: "Feature",
@@ -342,8 +389,10 @@ function renderRoute(plan) {
 
 async function drawRisk() {
   setSource("route", []);
-  const { segments, risk_model } = await api(`/network/segments?month=${$("riskMonth").value}`);
+  const data = await api(`/network/segments?month=${$("riskMonth").value}`);
+  const { segments, risk_model } = data;
   state.segments = segments;
+  refreshClosureOptions();
   const shown = segments.filter((s) => state.riskModes.has(s.mode));
 
   setSource("segments", shown.map((s) => ({
@@ -351,28 +400,33 @@ async function drawRisk() {
     geometry: { type: "LineString", coordinates: s.geometry },
     properties: {
       colour: RISK_COLOUR[s.risk.band],
-      popup: `<strong>${esc(s.from_name)} → ${esc(s.to_name)}</strong><br>
-              ${esc(s.mode)} · ${esc(s.route_ref)} · ${esc(s.terrain)}<br>
+      popup: `<strong>${esc(s.label)}</strong><br>
+              ${esc(s.mode)} · ${esc(s.route_ref)} · ${esc(s.terrain)} · ${s.distance_km} km<br>
               disruption risk this month: <b>${(s.risk.probability * 100).toFixed(0)}%</b>
-              (${esc(s.risk.band)})<br>
-              ${s.landslide_events} recorded landslide events`,
+              (${esc(s.risk.band)})`,
     },
   })));
   setSource("places", []);
   legend("Disruption risk", Object.entries(RISK_COLOUR).map(([band, colour]) => [colour, band]));
   fitTo(shown.flatMap((s) => s.geometry));
 
-  const worst = shown.slice(0, 12).map((s) => `<tr>
-      <td>${esc(s.from_name)} – ${esc(s.to_name)}</td>
+  // Prefer segments a reader can place on a map: an unnamed junction pair is
+  // a true finding but an unusable one.
+  const worst = shown.filter((s) => s.named).slice(0, 12).map((s) => `<tr>
+      <td>${esc(s.label)}</td>
       <td>${esc(s.route_ref)}</td>
       <td><span class="badge ${esc(s.risk.band)}">${(s.risk.probability * 100).toFixed(0)}%</span></td>
     </tr>`).join("");
 
+  const historyNote = data.landslide_history
+    ? "Risk combines terrain, recorded landslide density, carriageway width and the seasonal rain index."
+    : "This network carries no recorded landslide history, so risk is running on "
+      + "terrain, carriageway width and rainfall alone and its range is compressed.";
+
   $("riskResult").innerHTML = `
     <table><thead><tr><th>Segment</th><th>Route</th><th>Risk</th></tr></thead>
     <tbody>${worst}</tbody></table>
-    <p class="note">Model: ${esc(risk_model)}. Risk combines terrain, recorded landslide density,
-       carriageway width and the seasonal rain index.</p>`;
+    <p class="note">Model: ${esc(risk_model)}. ${esc(historyNote)}</p>`;
 }
 
 /* ------------------------------------------------------ accessibility ---- */
@@ -468,15 +522,22 @@ async function evaluateSites() {
     fitTo(data.ranked_sites.map((r) => [r.site.lon, r.site.lat]));
     legend("Population newly covered", [["rgb(46,160,67)", "most"], ["rgb(248,81,73)", "least"]]);
 
+    // Ranked by settlements reached, so that is the leading column. Population
+    // is shown next to it with its coverage stated, because OSM records a
+    // population for only a minority of settlements.
+    const coverage = Math.round((data.population_coverage ?? 0) * 100);
     $("sitingResult").innerHTML = `
       <h2 style="margin-top:16px">Ranked sites</h2>
-      <table><thead><tr><th>#</th><th>Site</th><th>People reached</th><th>Score gain</th></tr></thead>
+      <table><thead><tr><th>#</th><th>Site</th><th>Settlements</th><th>People*</th><th>Gain</th></tr></thead>
       <tbody>${data.ranked_sites.map((r, i) => `<tr>
         <td>${i + 1}</td><td>${esc(r.site.name)}</td>
+        <td>${r.settlements_newly_covered.toLocaleString("en-IN")}</td>
         <td>${r.population_newly_covered.toLocaleString("en-IN")}</td>
         <td>+${r.mean_score_gain}</td></tr>`).join("")}</tbody></table>
-      <p class="note">Baseline coverage: ${data.baseline_population_covered.toLocaleString("en-IN")} people
-         already within ${data.threshold_hours} h of a ${esc(data.facility_type)}.</p>`;
+      <p class="note">Ranked by settlements brought within ${data.threshold_hours} h.
+         Baseline: ${data.baseline_settlements_covered.toLocaleString("en-IN")} settlements already covered.</p>
+      <p class="note">*OSM records a population for only ${coverage}% of settlements,
+         so the population column understates reach and is not what the ranking uses.</p>`;
   } catch (error) {
     $("sitingResult").innerHTML = `<div class="error">${esc(error.message)}</div>`;
   } finally {

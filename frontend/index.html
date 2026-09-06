@@ -83,8 +83,10 @@
     </select>
     <label for="threshold">Within <span id="thresholdL">10</span> hours</label>
     <input type="range" id="threshold" min="2" max="24" step="1" value="10">
-    <label>Candidate sites <span class="note" id="candCount"></span></label>
-    <div class="chips" id="candidateChips"></div>
+    <label for="candidateSearch">Candidate sites <span class="note" id="candCount"></span></label>
+    <input type="search" id="candidateSearch" placeholder="Type to filter settlements…">
+    <select id="candidateList" size="8" multiple></select>
+    <div class="chips" id="candidateChosen"></div>
     <button class="primary" id="siteBtn">Evaluate sites</button>
     <div id="sitingResult"></div>
   </section>

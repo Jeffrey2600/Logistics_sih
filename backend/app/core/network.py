@@ -55,13 +55,33 @@ class Place:
 class Network:
     places: dict[str, Place]
     edges: list[dict] = field(default_factory=list)
+    _modes_cache: tuple[int, dict[str, set[str]]] | None = field(
+        default=None, repr=False, compare=False
+    )
 
     def modes_at(self, place_id: str) -> set[str]:
-        return {
-            e["mode"]
-            for e in self.edges
-            if e["u"] == place_id or e["v"] == place_id
-        }
+        return self.modes_by_place().get(place_id, set())
+
+    def modes_by_place(self) -> dict[str, set[str]]:
+        """{place_id: modes serving it}, built in one pass over the edges.
+
+        Answering this per place by scanning every edge is quadratic, and
+        build_graph asks it for every place: at 10,572 places and 11,276 edges
+        that is 119 million comparisons and about fifteen seconds, which the
+        seed network's 46 places hid completely.
+
+        Cached against the edge count rather than with lru_cache: caching on
+        the instance would pin every Network ever built in memory, and keying
+        on identity risks a freed object's id being reused. Tests append edges
+        after construction, and the count catches that.
+        """
+        if self._modes_cache is None or self._modes_cache[0] != len(self.edges):
+            modes: dict[str, set[str]] = {}
+            for edge in self.edges:
+                modes.setdefault(edge["u"], set()).add(edge["mode"])
+                modes.setdefault(edge["v"], set()).add(edge["mode"])
+            self._modes_cache = (len(self.edges), modes)
+        return self._modes_cache[1]
 
     def edge_by_id(self, edge_id: str) -> dict | None:
         return next((e for e in self.edges if e["id"] == edge_id), None)
@@ -313,8 +333,9 @@ def build_graph(
         graph.add_edge(b, a, **attrs)
 
     # Transfer edges wherever a place is served by more than one mode.
+    modes_by_place = network.modes_by_place()
     for place_id in network.places:
-        modes_here = sorted(network.modes_at(place_id) & allowed)
+        modes_here = sorted(modes_by_place.get(place_id, set()) & allowed)
         for from_mode in modes_here:
             for to_mode in modes_here:
                 if from_mode == to_mode:

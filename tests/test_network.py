@@ -140,3 +140,63 @@ def test_a_failed_plan_still_cleans_up_its_terminals(network, risk_model):
     except RoutingError:
         pass
     assert graph.number_of_nodes() == before
+
+
+def test_modes_by_place_is_built_in_one_pass(network):
+    """Scanning every edge per place is quadratic; at OSM scale that was 119
+    million comparisons and about fifteen seconds of graph build."""
+    modes = network.modes_by_place()
+    for edge in network.edges:
+        assert edge["mode"] in modes[edge["u"]]
+        assert edge["mode"] in modes[edge["v"]]
+    assert network.modes_at("GAU") == modes["GAU"]
+    assert network.modes_at("NOWHERE") == set()
+
+
+def test_modes_index_notices_appended_edges(network):
+    """Tests and merges append edges after construction; a cache keyed on the
+    instance alone would keep serving the pre-merge answer."""
+    from backend.app.core.network import Network
+
+    net = Network(places=dict(network.places), edges=list(network.edges))
+    assert "water" not in net.modes_at("KHM")
+    net.edges.append({
+        "id": "KHM-GAU-water", "u": "KHM", "v": "GAU", "mode": "water",
+        "distance_km": 10.0, "terrain": "riverine", "route_ref": "NW-X",
+        "lanes": 0, "monsoon_exposure": 0.5, "landslide_events": 0,
+    })
+    assert "water" in net.modes_at("KHM")
+
+
+def test_graph_build_is_not_quadratic_in_places():
+    """A star network: one hub, many leaves. Build time must track edges, not
+    places times edges."""
+    import time
+
+    from backend.app.core.network import Network, Place, build_graph
+    from backend.app.core.risk import AnalyticRiskModel
+
+    def build(n):
+        places = {"HUB": Place(id="HUB", name="HUB", state="", lat=26.0, lon=92.0,
+                               kind="city", population=1, has_market=True,
+                               has_coldstore=True)}
+        edges = []
+        for i in range(n):
+            pid = f"p{i}"
+            places[pid] = Place(id=pid, name=pid, state="", lat=26.0 + i * 1e-4,
+                                lon=92.0, kind="village", population=0,
+                                has_market=False, has_coldstore=False)
+            edges.append({"id": f"HUB-{pid}-road", "u": "HUB", "v": pid,
+                          "mode": "road", "distance_km": 5.0, "terrain": "plain",
+                          "route_ref": "NH", "lanes": 2,
+                          "monsoon_exposure": 0.3, "landslide_events": 0})
+        net = Network(places=places, edges=edges)
+        weights = {"cost": 0.4, "time": 0.4, "risk": 0.2}
+        start = time.perf_counter()
+        build_graph(net, AnalyticRiskModel(), "jul", weights)
+        return time.perf_counter() - start
+
+    small, large = build(200), build(1600)
+    # Eight times the size. Quadratic would be ~64x; allow generous headroom
+    # for timing noise while still failing a return to O(places x edges).
+    assert large < small * 25, f"build scaled {large / max(small, 1e-6):.0f}x for 8x the network"

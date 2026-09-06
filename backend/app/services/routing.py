@@ -53,14 +53,21 @@ def _summarise(graph: nx.DiGraph, path: list[tuple[str, str]], network: Network)
         risk = data["risk"]
         peak_risk = max(peak_risk, risk.probability)
         raw = data["raw"]
+        origin_place, destination_place = network.places[a[0]], network.places[b[0]]
         legs.append(
             {
                 "type": "travel",
                 "edge_id": data["edge_id"],
                 "from": a[0],
-                "from_name": network.places[a[0]].name,
+                "from_name": origin_place.name,
+                # Coordinates travel with the leg: a route crosses road
+                # junctions the client never lists, so it cannot look them up.
+                "from_lat": origin_place.lat,
+                "from_lon": origin_place.lon,
                 "to": b[0],
-                "to_name": network.places[b[0]].name,
+                "to_name": destination_place.name,
+                "to_lat": destination_place.lat,
+                "to_lon": destination_place.lon,
                 "mode": data["mode"],
                 "route_ref": raw["route_ref"],
                 "terrain": raw["terrain"],
