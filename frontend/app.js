@@ -720,17 +720,39 @@ function flashApplied(id) {
   const note = $(id);
   note.hidden = false;
   clearTimeout(note._timer);
-  note._timer = setTimeout(() => (note.hidden = true), 2200);
+  note._timer = setTimeout(() => (note.hidden = true), 4000);
 }
 
 // The map redraws on Apply, not on every control change: at 11,000 segments a
 // redraw is visible work, and a map that lurches while you are still choosing
 // gives no moment where you can see that your choice landed.
-$("riskApply").onclick = () => drawRisk().then(() => flashApplied("riskApplied"));
+//
+// The button holds a busy state for the whole redraw. Without it Apply looked
+// inert for the two seconds the work actually takes, and there was no way -
+// for a person or a test - to know whether a click had been taken.
+async function applyWith(buttonId, noteId, draw) {
+  const button = $(buttonId);
+  const label = button.dataset.label || (button.dataset.label = button.textContent);
+  button.disabled = true;
+  button.textContent = "Applying…";
+  $(noteId).hidden = true;
+  try {
+    await draw();
+    flashApplied(noteId);
+  } catch (error) {
+    $("legend").innerHTML = "";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+  }
+}
+
+$("riskApply").onclick = () => applyWith("riskApply", "riskApplied", drawRisk);
 $("accessApply").onclick = () =>
-  drawAccessibility().then(() => flashApplied("accessApplied"));
+  applyWith("accessApply", "accessApplied", drawAccessibility);
 $("minLength").oninput = (e) => ($("minLengthL").textContent = e.target.value);
-$("riskMonth").onchange = () => drawRisk().then(() => flashApplied("riskApplied"));
+$("riskMonth").onchange = () => applyWith("riskApply", "riskApplied", drawRisk);
 $("vot").oninput = (e) => ($("votLabel").textContent = "₹" + e.target.value);
 for (const key of ["Cost", "Time", "Risk"]) {
   $("w" + key).oninput = (e) => ($("w" + key + "L").textContent = (+e.target.value).toFixed(2));
