@@ -78,3 +78,45 @@ def test_facility_impact_endpoint(client):
 
 def test_facility_impact_validates_candidate_list(client):
     assert client.post("/accessibility/facility-impact", json={"candidate_ids": []}).status_code == 422
+
+
+def test_segment_labels_are_readable(client):
+    """Two thirds of an OSM network's nodes are unnamed junctions, so a label
+    built from node ids would be the common case and would say nothing."""
+    body = client.get("/network/segments?month=jul").json()
+    for segment in body["segments"][:200]:
+        assert segment["label"]
+        assert "n1" not in segment["label"] or not segment["label"].startswith("n")
+
+
+def test_segment_label_forms():
+    from backend.app.api.routes.network import segment_label
+
+    assert segment_label("Guwahati", "Nagaon", "NH-27") == "Guwahati – Nagaon"
+    assert segment_label("Shillong", "n123", "NH-6") == "NH-6 near Shillong"
+    assert segment_label("n1", "Shillong", "NH-6") == "NH-6 near Shillong"
+    # An OSM highway class is not a road name.
+    assert segment_label("Shillong", "n123", "primary") == "Road near Shillong"
+    assert segment_label("n1", "n2", "trunk") == "Road"
+
+
+def test_landslide_history_counts_only_the_rows_returned(client):
+    """The seed rail alignments carry history while the OSM roads do not, so a
+    plain any() over every edge answers yes and hides the gap."""
+    body = client.get("/network/segments?month=jul&mode=road").json()
+    history = body["landslide_history"]
+    assert history["total"] == body["count"]
+    assert 0 <= history["segments"] <= history["total"]
+
+
+def test_places_can_exclude_junctions(client):
+    everything = client.get("/network/places").json()["count"]
+    settlements = client.get("/network/places?settlements_only=true").json()
+    assert settlements["count"] <= everything
+    assert all(p["kind"] != "junction" for p in settlements["places"])
+
+
+def test_risk_bands_are_the_three_validated_ones(client):
+    body = client.get("/network/segments?month=jul").json()
+    bands = {s["risk"]["band"] for s in body["segments"]}
+    assert bands <= {"low", "elevated", "severe"}

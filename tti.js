@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
   const p = await ctx.newPage();
   await p.route('**/*', r => r.continue());   // no disk cache
   const t0 = Date.now();
-  await p.goto('http://localhost:8114/', { waitUntil: 'domcontentloaded' });
+  await p.goto('http://localhost:8120/', { waitUntil: 'domcontentloaded' });
   await p.waitForSelector('#routeResult .stat b', { timeout: 60000 });
   console.log(`time to first usable route: ${((Date.now()-t0)/1000).toFixed(1)}s`);
   console.log(JSON.stringify(await p.evaluate(() => ({

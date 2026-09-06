@@ -63,13 +63,17 @@ class RiskAssessment:
         }
 
 
+# Three bands, not four. Four warm colours cannot be told apart on a map -
+# "high" and "severe" measured a colour-difference of 2.3 for a red-green
+# colourblind reader and 8.2 for everyone else, on the two bands that matter
+# most. Three bands carry validated, clearly distinct colours, and the risk
+# range on the OSM network is compressed enough that a fourth was false
+# precision anyway.
 def _band(p: float) -> str:
-    if p < 0.10:
+    if p < 0.15:
         return "low"
-    if p < 0.25:
-        return "moderate"
-    if p < 0.45:
-        return "high"
+    if p < 0.35:
+        return "elevated"
     return "severe"
 
 

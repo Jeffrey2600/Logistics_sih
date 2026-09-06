@@ -57,6 +57,27 @@ def test_per_trip_exposure_below_monthly_susceptibility(risk_model):
 
 
 @pytest.mark.parametrize("month", ["jan", "apr", "jul", "oct"])
+def test_bands_are_ordered_and_only_three(risk_model, month):
+    """Four warm bands could not be told apart on a map; three can."""
+    bands = {
+        risk_model.assess(edge(terrain=t, landslide_events=n, monsoon_exposure=e), month).band
+        for t in ("plain", "hilly", "mountain")
+        for n in (0, 5, 40)
+        for e in (0.1, 0.9)
+    }
+    assert bands <= {"low", "elevated", "severe"}
+
+
+def test_band_thresholds_are_monotonic(risk_model):
+    calm = risk_model.assess(edge(terrain="plain", monsoon_exposure=0.1), "jan")
+    bad = risk_model.assess(
+        edge(terrain="mountain", lanes=1, monsoon_exposure=1.0, landslide_events=60), "jul"
+    )
+    order = ["low", "elevated", "severe"]
+    assert order.index(calm.band) <= order.index(bad.band)
+
+
+@pytest.mark.parametrize("month", ["jan", "apr", "jul", "oct"])
 def test_probability_always_in_range(risk_model, month):
     worst = edge(terrain="mountain", lanes=1, monsoon_exposure=1.0, landslide_events=99)
     assessment = risk_model.assess(worst, month)

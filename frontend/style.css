@@ -1,7 +1,11 @@
 :root {
   --bg: #0f1419; --panel: #171d24; --panel-2: #1e262f; --line: #2a3540;
   --text: #e6edf3; --muted: #93a1b0; --accent: #4da3ff;
-  --low: #2ea043; --moderate: #d29922; --high: #db6d28; --severe: #f85149;
+  /* Risk bands. Three, not four: four warm colours could not be told apart,
+     with "high" and "severe" measuring a colour difference of 2.3 for a
+     red-green colourblind reader. These three pass every check in the
+     validator on this surface. */
+  --low: #199e70; --elevated: #c98500; --severe: #d03b3b;
   --road: #4da3ff; --rail: #a371f7; --water: #2dd4bf; --air: #f778ba;
 }
 * { box-sizing: border-box; }
@@ -61,9 +65,8 @@ button.primary:disabled { opacity: .5; cursor: wait; }
 .badge { display: inline-block; border-radius: 4px; padding: 1px 7px;
          font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
 .badge.low { background: var(--low); color: #04140a; }
-.badge.moderate { background: var(--moderate); color: #1a1200; }
-.badge.high { background: var(--high); color: #1a0d00; }
-.badge.severe { background: var(--severe); color: #1a0305; }
+.badge.elevated { background: var(--elevated); color: #1a1200; }
+.badge.severe { background: var(--severe); color: #fff; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th { text-align: left; color: var(--muted); font-weight: 600; font-size: 10px;
      text-transform: uppercase; letter-spacing: .5px; padding: 6px 4px;
@@ -74,6 +77,17 @@ tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--panel-2
        padding: 10px; margin-top: 8px; cursor: pointer; }
 .alt:hover { border-color: var(--accent); }
 .note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+/* One sentence at the top of each panel saying what question it answers. */
+.lede { color: var(--text); font-size: 13px; line-height: 1.5; margin: 0 0 4px;
+        padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+/* Guidance under a control, explaining what changing it will do. */
+.hint { color: var(--muted); font-size: 11.5px; line-height: 1.45; margin: 5px 0 0; }
+details#advanced { margin-top: 16px; border: 1px solid var(--line);
+                   border-radius: 6px; padding: 0 12px; }
+details#advanced[open] { padding-bottom: 12px; }
+details#advanced summary { cursor: pointer; padding: 10px 0; font-size: 12px;
+                           color: var(--muted); font-weight: 600; }
+details#advanced summary:hover { color: var(--text); }
 .error { color: var(--severe); font-size: 12px; margin-top: 12px;
          border: 1px solid var(--severe); border-radius: 6px; padding: 10px; background: #2a1215; }
 #map { height: 100vh; background: #0b0f14; }
@@ -81,6 +95,8 @@ tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--panel-2
           border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 11px; }
 .legend div { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
 .legend i { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend .legend-note { display: block; color: var(--muted); margin-top: 8px;
+                       max-width: 190px; line-height: 1.4; font-size: 10.5px; }
 .maplibregl-popup-content { background: var(--panel); color: var(--text);
                             border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
 .maplibregl-popup-tip { border-top-color: var(--panel) !important;

@@ -34,7 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common import PROCESSED_DIR, RAW_DIR, ensure_dirs  # noqa: E402
+from common import PROCESSED_DIR, RAW_DIR, ensure_dirs, haversine_km, load_seed_places  # noqa: E402
 from fetch_osm import (  # noqa: E402
     NER_REGIONS, region_bbox, run_query, tiles, write_csv,
 )
@@ -156,6 +156,15 @@ def main() -> None:
     nodes, edges, unattached, merges = attach(
         settlements, network, max_attach_km=args.max_attach_km
     )
+
+    # OSM settlement nodes carry no state, which leaves the column blank in
+    # every table. Assign the state of the nearest seed town: crude near a
+    # border, right almost everywhere else, and far better than empty.
+    seed = [p for p in load_seed_places().values()]
+    for node in nodes:
+        nearest = min(seed, key=lambda p: haversine_km(
+            node["lat"], node["lon"], float(p["lat"]), float(p["lon"])))
+        node["state"] = nearest["state"]
 
     known = sum(1 for s in settlements if s.population_known)
     print(f"  attached as new nodes:  {len(nodes)}")

@@ -15,21 +15,33 @@ def _is_named(name: str) -> bool:
     return not (name.startswith("n") and name[1:].isdigit())
 
 
+# OSM highway classes are not road names: "primary near Shillong" reads as a
+# tagging artefact, "Road near Shillong" reads as English.
+HIGHWAY_CLASS_WORDS = {
+    "motorway", "trunk", "primary", "secondary", "tertiary", "road", "access",
+    "motorway_link", "trunk_link", "primary_link",
+}
+
+
+def road_word(route_ref: str) -> str:
+    return "Road" if route_ref.lower() in HIGHWAY_CLASS_WORDS else route_ref
+
+
 def segment_label(from_name: str, to_name: str, route_ref: str) -> str:
     """A label a person can read.
 
-    Most nodes in an OSM-derived network are unnamed junctions, so "n4021632273
-    - n12296272662" is the common case and tells a planner nothing. Falling back
-    to the road reference at least says which highway is affected.
+    Most nodes in an OSM-derived network are unnamed junctions, so
+    "n4021632273 - n12296272662" is the common case and tells a planner
+    nothing. Naming the nearest place, and the highway where there is one, at
+    least says where to look.
     """
     from_named, to_named = _is_named(from_name), _is_named(to_name)
     if from_named and to_named:
         return f"{from_name} – {to_name}"
-    if from_named:
-        return f"{route_ref} near {from_name}"
-    if to_named:
-        return f"{route_ref} near {to_name}"
-    return route_ref
+    anchor = from_name if from_named else to_name if to_named else None
+    if anchor:
+        return f"{road_word(route_ref)} near {anchor}"
+    return road_word(route_ref)
 
 
 @router.get("/places", summary="All places in the network")
@@ -94,10 +106,15 @@ def list_segments(
         "risk_model": risk_model.name,
         "modes": list(MODES),
         # Landslide history is what separates a merely steep road from a
-        # known-bad one. Where the network carries none, the risk model is
-        # running on terrain, carriageway width and rainfall alone, and its
-        # range is correspondingly compressed - the UI says so rather than
-        # presenting a weaker signal as if it were the same one.
-        "landslide_history": any(e["landslide_events"] for e in network.edges),
+        # known-bad one. Where the network carries none, the risk model runs on
+        # terrain, carriageway width and rainfall alone and its range is
+        # compressed - the UI says so rather than presenting a weaker signal as
+        # if it were the same one. Counted over the rows actually shown: the
+        # seed rail alignments carry history while the OSM roads do not, so a
+        # plain any() over every edge answers yes and hides the gap.
+        "landslide_history": {
+            "segments": sum(1 for r in rows if r["landslide_events"]),
+            "total": len(rows),
+        },
         "segments": rows,
     }

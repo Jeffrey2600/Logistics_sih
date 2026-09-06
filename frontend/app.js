@@ -10,7 +10,22 @@ const MONTHS = [
 ];
 const MODES = ["road", "rail", "water", "air"];
 const MODE_COLOUR = { road: "#4da3ff", rail: "#a371f7", water: "#2dd4bf", air: "#f778ba" };
-const RISK_COLOUR = { low: "#2ea043", moderate: "#d29922", high: "#db6d28", severe: "#f85149" };
+// Three risk bands with validated colours. Four warm bands failed the
+// colour-difference checks outright: "high" and "severe" were 2.3 apart for a
+// deutan reader and 8.2 for normal vision, on exactly the two bands a risk map
+// exists to separate. Line width carries the same signal as a second channel,
+// so the map never depends on hue alone.
+const RISK_COLOUR = { low: "#199e70", elevated: "#c98500", severe: "#d03b3b" };
+const RISK_LABEL = { low: "Usually open", elevated: "Often disrupted", severe: "Frequently blocked" };
+const RISK_WIDTH = { low: 0.6, elevated: 1.0, severe: 1.7 };
+
+// Named trade-offs, so nobody has to reason about three abstract weights.
+const PRIORITIES = {
+  balanced: { cost: 0.4, time: 0.4, risk: 0.2 },
+  cheapest: { cost: 0.85, time: 0.1, risk: 0.05 },
+  fastest: { cost: 0.1, time: 0.85, risk: 0.05 },
+  reliable: { cost: 0.2, time: 0.25, risk: 0.55 },
+};
 
 const state = {
   places: {},
@@ -102,8 +117,14 @@ function addDataLayers() {
     layout: { "line-cap": "round" },
     paint: {
       "line-color": ["get", "colour"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 5, 1.5, 10, 4],
-      "line-opacity": 0.75,
+      // `zoom` is only valid as the direct input of a top-level interpolate, so
+      // the per-feature width scale multiplies each stop's output instead.
+      "line-width": [
+        "interpolate", ["linear"], ["zoom"],
+        5, ["*", 1.6, ["coalesce", ["get", "widthScale"], 1]],
+        10, ["*", 4.5, ["coalesce", ["get", "widthScale"], 1]],
+      ],
+      "line-opacity": 0.85,
     },
   });
   // line-dasharray is not data-driven in MapLibre, so surface and air legs are
@@ -175,10 +196,11 @@ function fitTo(coords) {
   });
 }
 
-function legend(title, rows) {
+function legend(title, rows, note) {
   $("legend").innerHTML =
     `<strong>${esc(title)}</strong>` +
-    rows.map(([colour, label]) => `<div><i style="background:${colour}"></i>${esc(label)}</div>`).join("");
+    rows.map(([colour, label]) => `<div><i style="background:${colour}"></i>${esc(label)}</div>`).join("") +
+    (note ? `<span class="legend-note">${esc(note)}</span>` : "");
 }
 
 /* ------------------------------------------------------------- startup --- */
@@ -261,6 +283,8 @@ async function boot() {
   // A chip per place was fine for 46 seed towns and is a wall of 5,000
   // buttons once real settlements land. A filterable list scales.
   buildCandidatePicker(places);
+  applyPriority();
+  applyCargo();
 
   planRoute();
 }
@@ -287,10 +311,25 @@ function weights() {
   return { cost: +$("wCost").value, time: +$("wTime").value, risk: +$("wRisk").value };
 }
 
+function applyPriority() {
+  const preset = PRIORITIES[$("priority").value] || PRIORITIES.balanced;
+  for (const [key, value] of Object.entries(preset)) {
+    const id = "w" + key[0].toUpperCase() + key.slice(1);
+    $(id).value = value;
+    $(id + "L").textContent = value.toFixed(2);
+  }
+}
+
+function applyCargo() {
+  $("vot").value = $("cargo").value;
+  $("votLabel").textContent = $("cargo").value;
+}
+
 async function planRoute() {
   const button = $("planBtn");
+  const label = button.dataset.label || (button.dataset.label = button.textContent);
   button.disabled = true;
-  button.textContent = "Planning…";
+  button.textContent = "Finding the best route…";
   try {
     const closure = $("closure").value;
     const plan = await api("/routing/plan", {
@@ -313,7 +352,7 @@ async function planRoute() {
     setSource("route", []);
   } finally {
     button.disabled = false;
-    button.textContent = "Plan route";
+    button.textContent = label;
   }
 }
 
@@ -339,7 +378,9 @@ function drawItinerary(itinerary) {
   }
   setSource("route", features);
   fitTo(coords);
-  legend("Mode", MODES.map((m) => [MODE_COLOUR[m], m]));
+  legend("How the freight travels", MODES.map((m) => [MODE_COLOUR[m], {
+    road: "By road", rail: "By rail", water: "By river barge", air: "By air",
+  }[m]]), "A change of colour is a transhipment: unloading and reloading costs time and money.");
 }
 
 function renderRoute(plan) {
@@ -371,14 +412,16 @@ function renderRoute(plan) {
   $("routeResult").innerHTML = `
     <div class="stats">
       <div class="stat"><b>${fmtH(s.total_hours)}</b><span>door to door</span></div>
-      <div class="stat"><b>${fmtRs(s.cost_per_tonne)}</b><span>per tonne</span></div>
-      <div class="stat"><b>${s.distance_km} km</b><span>distance</span></div>
-      <div class="stat"><b>${fmtH(s.expected_delay_hours)}</b><span>expected delay</span></div>
+      <div class="stat"><b>${fmtRs(s.cost_per_tonne)}</b><span>freight per tonne</span></div>
+      <div class="stat"><b>${s.distance_km} km</b><span>distance travelled</span></div>
+      <div class="stat"><b>${fmtH(s.expected_delay_hours)}</b><span>likely delay</span></div>
     </div>
-    <h2>Itinerary</h2>${legs}
-    ${alternatives ? `<h2 style="margin-top:16px">Alternatives</h2>${alternatives}` : ""}
-    <p class="note">Risk model: ${esc(plan.risk_model)}. Expected delay is the probability-weighted
-       cost of monsoon disruption on this lane, in this month.</p>`;
+    <h2>The journey</h2>${legs}
+    ${alternatives ? `<h2 style="margin-top:16px">Other ways to do it</h2>
+       <p class="hint">Click one to draw it on the map.</p>${alternatives}` : ""}
+    <p class="note">"Likely delay" is the time this shipment can expect to lose to
+       landslides and washouts in ${esc(plan.month)}, already included in the
+       door-to-door figure.</p>`;
 
   document.querySelectorAll(".alt").forEach((element) => {
     element.onclick = () => drawItinerary(plan.alternatives[+element.dataset.alt]);
@@ -400,14 +443,20 @@ async function drawRisk() {
     geometry: { type: "LineString", coordinates: s.geometry },
     properties: {
       colour: RISK_COLOUR[s.risk.band],
+      widthScale: RISK_WIDTH[s.risk.band] ?? 1,
       popup: `<strong>${esc(s.label)}</strong><br>
               ${esc(s.mode)} · ${esc(s.route_ref)} · ${esc(s.terrain)} · ${s.distance_km} km<br>
-              disruption risk this month: <b>${(s.risk.probability * 100).toFixed(0)}%</b>
-              (${esc(s.risk.band)})`,
+              <b>${esc(RISK_LABEL[s.risk.band] || s.risk.band)}</b> —
+              about a ${(s.risk.probability * 100).toFixed(0)}% chance of being
+              disrupted somewhere along it this month`,
     },
   })));
   setSource("places", []);
-  legend("Disruption risk", Object.entries(RISK_COLOUR).map(([band, colour]) => [colour, band]));
+  legend(
+    "Chance of being blocked this month",
+    Object.entries(RISK_COLOUR).map(([band, colour]) => [colour, RISK_LABEL[band]]),
+    "Thicker lines are more likely to close, so the map still reads without colour.",
+  );
   fitTo(shown.flatMap((s) => s.geometry));
 
   // Prefer segments a reader can place on a map: an unnamed junction pair is
@@ -415,13 +464,16 @@ async function drawRisk() {
   const worst = shown.filter((s) => s.named).slice(0, 12).map((s) => `<tr>
       <td>${esc(s.label)}</td>
       <td>${esc(s.route_ref)}</td>
-      <td><span class="badge ${esc(s.risk.band)}">${(s.risk.probability * 100).toFixed(0)}%</span></td>
+      <td><span class="badge ${esc(s.risk.band)}" title="${esc(RISK_LABEL[s.risk.band] || "")}">${(s.risk.probability * 100).toFixed(0)}%</span></td>
     </tr>`).join("");
 
-  const historyNote = data.landslide_history
-    ? "Risk combines terrain, recorded landslide density, carriageway width and the seasonal rain index."
-    : "This network carries no recorded landslide history, so risk is running on "
-      + "terrain, carriageway width and rainfall alone and its range is compressed.";
+  const history = data.landslide_history || { segments: 0, total: 1 };
+  const covered = history.segments / Math.max(history.total, 1);
+  const historyNote = covered > 0.05
+    ? "Estimated from terrain, past landslides on that stretch, how narrow the road is, and how much rain falls there."
+    : "Estimated from terrain, road width and rainfall. We have no record of past "
+      + "landslides on these roads, so the real risk on the worst stretches is "
+      + "probably higher than shown.";
 
   $("riskResult").innerHTML = `
     <table><thead><tr><th>Segment</th><th>Route</th><th>Risk</th></tr></thead>
@@ -432,9 +484,11 @@ async function drawRisk() {
 /* ------------------------------------------------------ accessibility ---- */
 
 function rampColour(value, worst, best) {
-  // Green at `best`, red at `worst`, interpolated through amber.
+  // The same three validated colours as the risk map, interpolated. Red-amber-
+  // green with four stops failed the colour-difference checks; three stops with
+  // a clear lightness step do not.
   const t = Math.max(0, Math.min(1, (value - worst) / (best - worst || 1)));
-  const stops = [[248, 81, 73], [219, 109, 40], [210, 153, 34], [46, 160, 67]];
+  const stops = [[208, 59, 59], [201, 133, 0], [25, 158, 112]];
   const scaled = t * (stops.length - 1);
   const i = Math.min(stops.length - 2, Math.floor(scaled));
   const f = scaled - i;
@@ -464,10 +518,15 @@ async function drawAccessibility() {
     },
   })));
   fitTo(data.places.map((p) => [p.lon, p.lat]));
-  legend(higherIsBetter ? "Accessibility score" : "Travel time",
-         [["rgb(46,160,67)", higherIsBetter ? "high" : "short"],
-          ["rgb(210,153,34)", "middling"],
-          ["rgb(248,81,73)", higherIsBetter ? "low" : "long"]]);
+  legend(
+    higherIsBetter ? "How well connected" : "Travel time",
+    [["rgb(25,158,112)", higherIsBetter ? "Well connected" : "A short trip"],
+     ["rgb(201,133,0)", higherIsBetter ? "Getting by" : "Half a day"],
+     ["rgb(208,59,59)", higherIsBetter ? "Cut off" : "A day or more"]],
+    higherIsBetter
+      ? "Blends time to a market, cold store and the national gateway, plus how much worse the monsoon makes it."
+      : "Real driving time over the road network, not distance on a map.",
+  );
 
   const rows = data.underserved.map((p) => `<tr class="clickable" data-lon="${p.lon}" data-lat="${p.lat}">
       <td>${esc(p.name)}</td><td>${esc(p.state)}</td>
@@ -475,11 +534,13 @@ async function drawAccessibility() {
     </tr>`).join("");
 
   $("accessResult").innerHTML = `
-    <h2 style="margin-top:16px">Most underserved</h2>
-    <table><thead><tr><th>Place</th><th>State</th><th>Score</th><th>To market</th></tr></thead>
+    <h2 style="margin-top:16px">Worst connected places</h2>
+    <p class="hint">Click a row to fly there. Scored out of 100, where 100 is a
+       place with a market, cold storage and a gateway all close by.</p>
+    <table><thead><tr><th>Place</th><th>State</th><th>Score</th><th>To a market</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <p class="note">Score blends distance to market (30%), cold chain (25%), gateway (25%)
-       and monsoon reliability (20%).</p>`;
+    <p class="note">Ranking ${data.settlements.toLocaleString("en-IN")} towns and villages.
+       ${data.unreachable ? data.unreachable.toLocaleString("en-IN") + " more have no road link at all and cannot be scored." : ""}</p>`;
 
   document.querySelectorAll("#accessResult tr.clickable").forEach((row) => {
     row.onclick = () => map.flyTo({ center: [+row.dataset.lon, +row.dataset.lat], zoom: 8.5 });
@@ -490,8 +551,9 @@ async function drawAccessibility() {
 
 async function evaluateSites() {
   const button = $("siteBtn");
+  const label = button.dataset.label || (button.dataset.label = button.textContent);
   button.disabled = true;
-  button.textContent = "Evaluating…";
+  button.textContent = "Comparing sites…";
   try {
     const data = await api("/accessibility/facility-impact", {
       method: "POST",
@@ -542,7 +604,7 @@ async function evaluateSites() {
     $("sitingResult").innerHTML = `<div class="error">${esc(error.message)}</div>`;
   } finally {
     button.disabled = false;
-    button.textContent = "Evaluate sites";
+    button.textContent = label;
   }
 }
 
@@ -560,6 +622,10 @@ document.querySelectorAll("nav button").forEach((button) => {
   };
 });
 
+$("priority").onchange = () => { applyPriority(); planRoute(); };
+$("cargo").onchange = () => { applyCargo(); planRoute(); };
+$("month").onchange = planRoute;
+$("closure").onchange = planRoute;
 $("planBtn").onclick = planRoute;
 $("siteBtn").onclick = evaluateSites;
 $("riskMonth").onchange = drawRisk;

@@ -15,79 +15,110 @@
     <p>SIH26002 &middot; MDoNER &middot; multimodal routing with monsoon risk priced in</p>
   </header>
   <nav>
-    <button data-tab="route" class="active">Route</button>
-    <button data-tab="risk">Risk map</button>
-    <button data-tab="access">Accessibility</button>
-    <button data-tab="siting">Siting</button>
+    <button data-tab="route" class="active">Plan a shipment</button>
+    <button data-tab="risk">Monsoon risk</button>
+    <button data-tab="access">Who is cut off</button>
+    <button data-tab="siting">Where to build</button>
   </nav>
 
   <section class="panel" id="tab-route">
-    <h2>Consignment</h2>
-    <div class="row">
-      <div><label for="origin">Origin</label><select id="origin"></select></div>
-      <div><label for="destination">Destination</label><select id="destination"></select></div>
-    </div>
-    <label for="month">Month of despatch</label>
+    <p class="lede">Find the best way to move freight across the North East —
+      by road, rail, river or air — with monsoon disruption priced in.</p>
+
+    <label for="origin">Ship from</label>
+    <select id="origin"></select>
+    <label for="destination">Ship to</label>
+    <select id="destination"></select>
+
+    <label for="month">When</label>
     <select id="month"></select>
-    <label>Modes permitted</label>
+    <p class="hint">June–September is the monsoon. Routes and costs change a lot.</p>
+
+    <label for="cargo">What are you shipping?</label>
+    <select id="cargo">
+      <option value="25">Bulk goods — cement, coal, timber (delay is cheap)</option>
+      <option value="150" selected>General cargo — packaged goods</option>
+      <option value="800">Perishables — ginger, pineapple, fish (spoils fast)</option>
+      <option value="3000">Urgent — medicines, relief supplies</option>
+    </select>
+    <p class="hint">Sets how costly a day of delay is, which decides whether speed is worth paying for.</p>
+
+    <label for="priority">What matters most?</label>
+    <select id="priority">
+      <option value="balanced" selected>Balanced — sensible all round</option>
+      <option value="cheapest">Cheapest — lowest freight bill</option>
+      <option value="fastest">Fastest — shortest door-to-door time</option>
+      <option value="reliable">Most reliable — avoid roads likely to close</option>
+    </select>
+
+    <label>How can it travel?</label>
     <div class="chips" id="modeChips"></div>
-    <label for="vot">Value of time &mdash; <span id="votLabel">₹25</span>/tonne/hour</label>
-    <input type="range" id="vot" min="0" max="2000" step="25" value="25">
-    <p class="note">Raise it for perishables: spoilage makes delay expensive, and the optimiser starts paying for speed.</p>
-    <label>Objective weights</label>
-    <div class="row">
-      <div><label for="wCost" style="margin-top:0">Cost <span id="wCostL">0.4</span></label>
-           <input type="range" id="wCost" min="0" max="1" step="0.05" value="0.4"></div>
-      <div><label for="wTime" style="margin-top:0">Time <span id="wTimeL">0.4</span></label>
-           <input type="range" id="wTime" min="0" max="1" step="0.05" value="0.4"></div>
-    </div>
-    <label for="wRisk" style="margin-top:8px">Risk aversion <span id="wRiskL">0.2</span></label>
-    <input type="range" id="wRisk" min="0" max="1" step="0.05" value="0.2">
-    <label>Simulate closures</label>
-    <select id="closure"><option value="">No closures</option></select>
-    <button class="primary" id="planBtn">Plan route</button>
+    <p class="hint">Tap to turn a mode off. Changing modes mid-journey costs time and money.</p>
+
+    <label for="closure">Test a road closure</label>
+    <select id="closure"><option value="">Nothing closed</option></select>
+    <p class="hint">Simulate a landslide shutting a highway and see where the freight goes instead.</p>
+
+    <details id="advanced">
+      <summary>Advanced: tune the trade-off</summary>
+      <div class="row">
+        <div><label for="wCost" style="margin-top:0">Cost <span id="wCostL">0.4</span></label>
+             <input type="range" id="wCost" min="0" max="1" step="0.05" value="0.4"></div>
+        <div><label for="wTime" style="margin-top:0">Time <span id="wTimeL">0.4</span></label>
+             <input type="range" id="wTime" min="0" max="1" step="0.05" value="0.4"></div>
+      </div>
+      <label for="wRisk" style="margin-top:8px">Avoiding risk <span id="wRiskL">0.2</span></label>
+      <input type="range" id="wRisk" min="0" max="1" step="0.05" value="0.2">
+      <label for="vot" style="margin-top:8px">Cost of delay — ₹<span id="votLabel">150</span> per tonne per hour</label>
+      <input type="range" id="vot" min="0" max="3000" step="25" value="150">
+    </details>
+
+    <button class="primary" id="planBtn">Find the best route</button>
     <div id="routeResult"></div>
   </section>
 
   <section class="panel" id="tab-risk" hidden>
-    <h2>Segment disruption risk</h2>
+    <p class="lede">Which roads are likely to be blocked, and when. Landslides and
+      washouts close NER highways for days at a time during the monsoon.</p>
     <label for="riskMonth">Month</label>
     <select id="riskMonth"></select>
-    <label>Mode</label>
+    <p class="hint">Slide through the year to watch the network deteriorate and recover.</p>
+    <label>Show</label>
     <div class="chips" id="riskModeChips"></div>
     <div id="riskResult"></div>
   </section>
 
   <section class="panel" id="tab-access" hidden>
-    <h2>Accessibility index</h2>
-    <p class="note">Door-to-facility travel hours over the real network, not straight-line distance, with the monsoon priced in.</p>
+    <p class="lede">Which villages are cut off from markets, cold storage and the
+      rest of India — measured in real travel hours, not map distance.</p>
     <label for="accessMonth">Month</label>
     <select id="accessMonth"></select>
-    <label for="accessMetric">Colour places by</label>
+    <label for="accessMetric">Colour the map by</label>
     <select id="accessMetric">
-      <option value="accessibility_score">Overall accessibility score</option>
-      <option value="hours_to_market">Hours to nearest market</option>
-      <option value="hours_to_coldstore">Hours to nearest cold store</option>
-      <option value="hours_to_gateway">Hours to nearest gateway</option>
+      <option value="accessibility_score">Overall connectedness (0 worst – 100 best)</option>
+      <option value="hours_to_market">Travel time to the nearest market</option>
+      <option value="hours_to_coldstore">Travel time to the nearest cold store</option>
+      <option value="hours_to_gateway">Travel time to Guwahati or Siliguri</option>
     </select>
     <div id="accessResult"></div>
   </section>
 
   <section class="panel" id="tab-siting" hidden>
-    <h2>Where should the next facility go?</h2>
-    <p class="note">Ranks candidate sites by the population they bring within reach, before anything is built.</p>
-    <label for="facilityType">Facility type</label>
+    <p class="lede">If you could build one new facility, where would it help most?
+      Compare sites before anything is built.</p>
+    <label for="facilityType">What would you build?</label>
     <select id="facilityType">
-      <option value="coldstore">Cold store</option>
-      <option value="market">Market / mandi</option>
+      <option value="coldstore">A cold store</option>
+      <option value="market">A market / mandi</option>
     </select>
-    <label for="threshold">Within <span id="thresholdL">10</span> hours</label>
+    <label for="threshold">Counts places within <span id="thresholdL">10</span> hours of it</label>
     <input type="range" id="threshold" min="2" max="24" step="1" value="10">
+    <p class="hint">A farmer will not haul produce much further than this in a day.</p>
     <label for="candidateSearch">Candidate sites <span class="note" id="candCount"></span></label>
     <input type="search" id="candidateSearch" placeholder="Type to filter settlements…">
     <select id="candidateList" size="8" multiple></select>
     <div class="chips" id="candidateChosen"></div>
-    <button class="primary" id="siteBtn">Evaluate sites</button>
+    <button class="primary" id="siteBtn">Compare these sites</button>
     <div id="sitingResult"></div>
   </section>
 </div>

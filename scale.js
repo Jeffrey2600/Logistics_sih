@@ -9,7 +9,7 @@ const { chromium } = require('playwright');
   p.on('console', m => { if (m.type()==='error') errs.push('CONSOLE: '+m.text().slice(0,120)); });
 
   let t = Date.now();
-  await p.goto('http://localhost:8112/', { waitUntil: 'networkidle', timeout: 120000 });
+  await p.goto('http://localhost:8123/', { waitUntil: 'networkidle', timeout: 120000 });
   await p.waitForTimeout(4000);
   console.log(`route tab ready: ${((Date.now()-t)/1000).toFixed(1)}s`);
   await p.screenshot({ path: 'shots/scale-01-route.png' });
