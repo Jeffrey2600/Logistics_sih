@@ -4,17 +4,17 @@
 
 .EXAMPLE
   .\run.ps1
-  Seed network (46 places) - fast, always works.
+  The full network: 10,572 places, 25,360 km of road.
 
 .EXAMPLE
-  .\run.ps1 -Osm
-  Full OpenStreetMap network: 6,502 nodes, 25,360 km of road.
+  .\run.ps1 -Seed
+  The small 46-place seed network, for a quick check.
 
 .EXAMPLE
-  .\run.ps1 -Osm -Port 9000
+  .\run.ps1 -Port 9000
 #>
 param(
-    [switch]$Osm,
+    [switch]$Seed,
     [int]$Port = 8000
 )
 
@@ -26,11 +26,13 @@ $python = if (Get-Command python -ErrorAction SilentlyContinue) { "python" }
           elseif (Get-Command py -ErrorAction SilentlyContinue) { "py" }
           else { throw "Python 3.11+ not found. Install it from python.org and re-run." }
 
-if ($Osm) {
-    $env:NER_USE_OSM = "1"
-    Write-Host "Network: seed + OpenStreetMap"
+# The full network is the default: it is committed, so it always loads, and a
+# demo should not depend on remembering a flag.
+if ($Seed) {
+    Write-Host "Network: seed only (46 places)"
 } else {
-    Write-Host "Network: seed only (pass -Osm for the full road network)"
+    $env:NER_USE_OSM = "1"
+    Write-Host "Network: full OpenStreetMap road network"
 }
 
 & $python -c "import fastapi, uvicorn, networkx" 2>$null

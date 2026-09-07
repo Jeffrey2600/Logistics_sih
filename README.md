@@ -6,6 +6,25 @@
 Multimodal freight routing and spatial accessibility scoring for the eight North
 Eastern states, with monsoon disruption risk priced into every segment.
 
+## Run it
+
+```bash
+git clone <this-repo> && cd Logistics_sih
+pip install -r backend/requirements.txt
+./run.sh                       # Windows: .\run.ps1
+```
+
+Then open **http://localhost:8000**.
+
+Nothing else to configure. The road network, settlements, rainfall and
+elevation are all committed, so it runs offline on a fresh clone with no API
+keys and no data build.
+
+```bash
+pip install -r requirements-dev.txt && python -m pytest tests -q   # 260 tests
+node tests/browser/check.js                                        # 30 UI checks
+```
+
 ---
 
 ## The problem, stated precisely
@@ -76,16 +95,16 @@ not an answer a district officer can act on.
 macOS / Linux:
 
 ```bash
-./run.sh              # seed network (46 places), starts in a second
-./run.sh --osm        # full OSM network: 6,502 nodes, 25,360 km of road
+./run.sh              # the full network, ready to demo
+./run.sh --seed       # the small 46-place network, for a quick check
 ```
 
 Windows (PowerShell) — note that `&&` is not a statement separator before
 PowerShell 7, so run each line on its own:
 
 ```powershell
-.\run.ps1             # seed network
-.\run.ps1 -Osm        # full OSM network
+.\run.ps1             # the full network, ready to demo
+.\run.ps1 -Seed       # the small 46-place network, for a quick check
 ```
 
 Then open <http://localhost:8000> for the dashboard, or
@@ -95,7 +114,7 @@ Or by hand:
 
 ```bash
 pip install -r requirements-dev.txt
-uvicorn backend.app.main:app --reload            # add NER_USE_OSM=1 for OSM
+NER_USE_OSM=1 uvicorn backend.app.main:app --reload
 ```
 
 There are no external data dependencies at runtime. The seed network, the

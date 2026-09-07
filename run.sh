@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # Start the NER Logistics platform: API + dashboard on one port.
 #
-#   ./run.sh              seed network (46 places) - fast, always works
-#   ./run.sh --osm        full OSM network (6,502 nodes, 25,360 km of road)
+#   ./run.sh              the full network - 10,572 places, 25,360 km of road
+#   ./run.sh --seed       the small 46-place seed network, for a quick check
 #   PORT=9000 ./run.sh    pick a port
 set -euo pipefail
 cd "$(dirname "$0")"
 
 PORT="${PORT:-8000}"
-if [ "${1:-}" = "--osm" ]; then
-  export NER_USE_OSM=1
-  echo "Network: seed + OpenStreetMap"
+# The full network is the default. It is committed, so it always loads, and a
+# demo should not depend on remembering a flag - typing ./run.sh used to give
+# the 46-place seed network, which is a fraction of what the project does.
+if [ "${1:-}" = "--seed" ]; then
+  echo "Network: seed only (46 places)"
 else
-  echo "Network: seed only (pass --osm for the full road network)"
+  export NER_USE_OSM=1
+  echo "Network: full OpenStreetMap road network"
 fi
 
 python3 -c "import fastapi, uvicorn, networkx" 2>/dev/null || {
