@@ -52,3 +52,16 @@ pip install python-pptx
 python docs/presentation/build_deck_submission6.py <template.pptx> out.pptx docs/presentation/screenshots
 python docs/presentation/build_deck_extended.py    <template.pptx> out.pptx docs/presentation/screenshots
 ```
+
+## Revision notes on `SIH26002_NER_Logistics_Submission6.pptx`
+
+The first pass covered every pointer's main phrase but dropped its
+parenthetical (e.g. "Technologies to be used" without "(e.g. programming
+languages, frameworks, hardware)"), used body text as small as 9pt, and a
+caption grey (`#8A8A8A`) that fails contrast at small sizes. All three are
+fixed: every pointer now shows its full template wording including the
+parenthetical, the smallest text on any slide is 10pt, and the caption grey
+is darkened to `#505050`. Wording was also rewritten in first person
+("we built", "we rank", "we are upfront about") instead of an
+agency-brochure voice, and most em dashes were removed in favour of plain
+sentences.
