@@ -12,7 +12,9 @@ from __future__ import annotations
 import csv
 import math
 import os
+import threading
 from dataclasses import dataclass, field
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 
@@ -411,11 +413,38 @@ def clear_graph_cache() -> None:
     _GRAPH_CACHE.clear()
 
 
+# The cached graph is shared between requests, and FastAPI runs sync endpoints
+# on a threadpool, so two browser requests really do land on it at once. The
+# terminals below are a mutation of that shared object: without this lock, one
+# request's detach removes the super-source another request is still walking,
+# and networkx dies deep inside shortest_simple_paths with an AttributeError
+# that names neither the graph nor the request. Re-entrant because
+# compare_options plans several times inside one call.
+_TERMINAL_LOCK = threading.RLock()
+
+
+@contextmanager
+def terminals(graph: nx.DiGraph, origin: str, destination: str):
+    """Hold the graph while it carries terminals for this origin/destination.
+
+    Use this rather than attach/detach by hand: the pairing and the locking are
+    the whole correctness argument, and a `finally:` in the caller only gets
+    half of it.
+    """
+    with _TERMINAL_LOCK:
+        source, sink = attach_terminals(graph, origin, destination)
+        try:
+            yield source, sink
+        finally:
+            detach_terminals(graph, source, sink)
+
+
 def attach_terminals(graph: nx.DiGraph, origin: str, destination: str) -> tuple[str, str]:
     """Add zero-cost super-source/sink so a trip may start or end in any mode.
 
-    Mutates the graph, which is now shared via the cache, so every caller must
-    pair this with `detach_terminals`.
+    Mutates the graph, which is shared via the cache, so every caller must pair
+    this with `detach_terminals` *and* hold `_TERMINAL_LOCK` for the span
+    between them. Prefer the `terminals` context manager, which does both.
     """
     source, sink = ("__src__", "*"), ("__dst__", "*")
     zero = {"kind": "virtual", "mode": None, "raw": None, "risk": None, "cost": None, "weight": 0.0}

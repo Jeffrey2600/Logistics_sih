@@ -7,9 +7,7 @@ import networkx as nx
 
 from ..config import DEFAULT_WEIGHTS, DRY_SEASON, MODES, PEAK_MONSOON
 from ..core.costing import normalise_weights
-from ..core.network import (
-    Network, attach_terminals, cached_graph, detach_terminals,
-)
+from ..core.network import Network, cached_graph, terminals
 from ..core.risk import RiskModel
 
 
@@ -138,15 +136,10 @@ def plan_route(
         blocked_edge_ids=set(blocked_edge_ids or []),
         value_of_time=value_of_time,
     )
-    source, sink = attach_terminals(graph, origin, destination)
-    try:
+    with terminals(graph, origin, destination) as (source, sink):
         return _plan_on(graph, network, source, sink, origin, destination,
                         month, resolved, risk_model, alternatives, allowed,
                         blocked_edge_ids)
-    finally:
-        # The graph is shared via the cache; leaving terminals behind would
-        # corrupt every later request that hits the same entry.
-        detach_terminals(graph, source, sink)
 
 
 def _plan_on(graph, network, source, sink, origin, destination, month, resolved,

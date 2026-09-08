@@ -183,3 +183,39 @@ def test_compare_rejects_an_unknown_place(network, risk_model):
 
     with pytest.raises(RoutingError):
         compare_options(network, risk_model, "ZZZ", "GAU")
+
+
+def test_concurrent_plans_do_not_corrupt_the_shared_graph(network, risk_model):
+    """Two browser requests in flight at once must not break each other.
+
+    The layered graph is memoised and shared, and planning mutates it by
+    attaching a super-source and super-sink. Before the terminals were locked,
+    one request's cleanup removed the terminals another request was still
+    walking, and networkx failed inside shortest_simple_paths with an
+    AttributeError on a None edge — a 500 with a traceback that named neither
+    the graph nor the request. The dashboard triggers exactly this by
+    re-planning on every control change.
+    """
+    import threading
+
+    from backend.app.services.routing import plan_route
+
+    lanes = [("KHM", "GAU"), ("AZL", "GAU"), ("IMP", "GAU"), ("GAU", "KHM")]
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(len(lanes))
+
+    def run(origin, destination):
+        try:
+            barrier.wait(timeout=30)
+            for _ in range(4):
+                plan_route(network, risk_model, origin, destination, month="jul")
+        except BaseException as exc:  # noqa: BLE001 - the assertion is the report
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run, args=lane) for lane in lanes]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=120)
+
+    assert not errors, f"concurrent planning failed: {errors[0]!r}"
