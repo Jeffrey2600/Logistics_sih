@@ -1,87 +1,176 @@
 # -*- coding: utf-8 -*-
-"""Fill the official SIH 2026 Idea template with the SIH26002 NER logistics project."""
+"""Build the SIH26002 submission deck on the official SIH 2026 Idea template.
+
+Usage: python build2.py <template.pptx> <out.pptx> <screenshot-dir>
+
+Every figure here is produced by the code in this repository. Nothing is
+estimated. See docs/presentation/README.md for how the numbers were taken.
+"""
+import sys
+from pathlib import Path
+
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
-import copy, sys
 
-SRC = sys.argv[1]; OUT = sys.argv[2]
+SRC, OUT = sys.argv[1], sys.argv[2]
+SHOTS = Path(sys.argv[3])
 
-INK   = RGBColor(0x10, 0x32, 0x3C)   # deep slate-teal, dominant
-BLUE  = RGBColor(0x00, 0x70, 0xC0)   # SIH template blue
-TINT  = RGBColor(0xEE, 0xF3, 0xF6)   # card ground
-LINE  = RGBColor(0xD2, 0xDD, 0xE2)
-MUTE  = RGBColor(0x54, 0x66, 0x6E)
+# A near-monochrome sheet. Colour is reserved for the risk bands, where it
+# carries meaning, and one blue for structure.
+INK   = RGBColor(0x1A, 0x1A, 0x1A)
+GREY  = RGBColor(0x5F, 0x5F, 0x5F)
+FAINT = RGBColor(0x8A, 0x8A, 0x8A)
+RULE  = RGBColor(0xBF, 0xBF, 0xBF)
+PANEL = RGBColor(0xF0, 0xF0, 0xF0)
+BAND  = RGBColor(0xE4, 0xE8, 0xEB)
+BLUE  = RGBColor(0x1F, 0x4E, 0x79)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-GREEN = RGBColor(0x1B, 0xAF, 0x7A)   # the app's validated risk palette
+GREEN = RGBColor(0x1B, 0xAF, 0x7A)
 AMBER = RGBColor(0xE0, 0xA1, 0x00)
 RED   = RGBColor(0xD0, 0x3B, 0x3B)
 
-BODY = "Calibri"
-NUMF = "Cambria"
+F = "Calibri"
+
+# ---------------------------------------------------------------- primitives
 
 
-def txbox(slide, x, y, w, h, anchor=MSO_ANCHOR.TOP):
-    tb = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
-    tf = tb.text_frame
+def tf_at(slide, x, y, w, h, anchor=MSO_ANCHOR.TOP):
+    box = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
+    tf = box.text_frame
     tf.word_wrap = True
-    tf.margin_left = tf.margin_right = Emu(0)
-    tf.margin_top = tf.margin_bottom = Emu(0)
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = Emu(0)
     tf.vertical_anchor = anchor
     return tf
 
 
-def para(tf, text, size, bold=False, color=INK, font=BODY, space_after=0,
-         first=False, align=PP_ALIGN.LEFT, italic=False, line=None):
+def line(tf, text, size=11, bold=False, color=INK, first=False, after=0,
+         align=PP_ALIGN.LEFT, spacing=1.15, italic=False):
     p = tf.paragraphs[0] if first else tf.add_paragraph()
     p.alignment = align
-    if line:
-        p.line_spacing = line
-    p.space_after = Pt(space_after)
+    p.line_spacing = spacing
+    p.space_after = Pt(after)
     r = p.add_run(); r.text = text
-    f = r.font
-    f.size = Pt(size); f.bold = bold; f.italic = italic
-    f.name = font; f.color.rgb = color
+    r.font.size = Pt(size); r.font.bold = bold; r.font.italic = italic
+    r.font.name = F; r.font.color.rgb = color
     return p
 
 
-def card(slide, x, y, w, h, fill=TINT, border=LINE, radius=0.06, shadow=False):
-    sh = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
-                                Inches(x), Inches(y), Inches(w), Inches(h))
-    sh.adjustments[0] = radius
-    sh.fill.solid(); sh.fill.fore_color.rgb = fill
+def runs(tf, parts, size=11, first=False, after=0, spacing=1.15):
+    """One paragraph made of (text, bold, colour) parts."""
+    p = tf.paragraphs[0] if first else tf.add_paragraph()
+    p.line_spacing = spacing
+    p.space_after = Pt(after)
+    for text, bold, color in parts:
+        r = p.add_run(); r.text = text
+        r.font.size = Pt(size); r.font.bold = bold
+        r.font.name = F; r.font.color.rgb = color
+    return p
+
+
+def rect(slide, x, y, w, h, fill=None, border=None, width=0.75,
+         shape=MSO_SHAPE.RECTANGLE):
+    sh = slide.shapes.add_shape(shape, Inches(x), Inches(y), Inches(w), Inches(h))
+    if fill is None:
+        sh.fill.background()
+    else:
+        sh.fill.solid(); sh.fill.fore_color.rgb = fill
     if border is None:
         sh.line.fill.background()
     else:
-        sh.line.color.rgb = border; sh.line.width = Pt(0.75)
+        sh.line.color.rgb = border; sh.line.width = Pt(width)
     sh.shadow.inherit = False
     sh.text_frame.text = ""
     return sh
 
 
-def badge(slide, cx, cy, d, text, fill, txt_color=WHITE, size=12):
-    sh = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx), Inches(cy),
-                                Inches(d), Inches(d))
-    sh.fill.solid(); sh.fill.fore_color.rgb = fill
-    sh.line.fill.background()
-    sh.shadow.inherit = False
-    tf = sh.text_frame
-    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = Emu(0)
-    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
-    r = p.add_run(); r.text = text
-    r.font.size = Pt(size); r.font.bold = True
-    r.font.name = BODY; r.font.color.rgb = txt_color
+def dbox(slide, x, y, w, h, title, sub=None, fill=WHITE, border=RULE,
+         title_size=10.5, sub_size=8.5, title_color=INK):
+    """A labelled box in a diagram."""
+    rect(slide, x, y, w, h, fill, border)
+    tf = tf_at(slide, x + 0.07, y, w - 0.14, h, anchor=MSO_ANCHOR.MIDDLE)
+    line(tf, title, title_size, bold=True, color=title_color, first=True,
+         align=PP_ALIGN.CENTER, spacing=1.0, after=1 if sub else 0)
+    if sub:
+        line(tf, sub, sub_size, color=GREY, align=PP_ALIGN.CENTER, spacing=1.0)
+    return tf
+
+
+def arrow_down(slide, cx, y, h=0.22, w=0.16, color=FAINT):
+    sh = slide.shapes.add_shape(MSO_SHAPE.DOWN_ARROW, Inches(cx - w / 2),
+                                Inches(y), Inches(w), Inches(h))
+    sh.fill.solid(); sh.fill.fore_color.rgb = color
+    sh.line.fill.background(); sh.shadow.inherit = False
+    sh.text_frame.text = ""
     return sh
 
 
-def set_title(slide, text, size=30):
+def arrow_right(slide, x, cy, w=0.30, h=0.14, color=FAINT):
+    sh = slide.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(x),
+                                Inches(cy - h / 2), Inches(w), Inches(h))
+    sh.fill.solid(); sh.fill.fore_color.rgb = color
+    sh.line.fill.background(); sh.shadow.inherit = False
+    sh.text_frame.text = ""
+    return sh
+
+
+def table(slide, x, y, w, rows, widths, row_h=0.30, head_h=0.30, size=10,
+          head_size=9.5, aligns=None, head_fill=BAND):
+    """A plain data table. Header row, hairline rules, no banding."""
+    n_rows, n_cols = len(rows), len(rows[0])
+    shape = slide.shapes.add_table(n_rows, n_cols, Inches(x), Inches(y),
+                                   Inches(w), Inches(head_h + row_h * (n_rows - 1)))
+    tbl = shape.table
+    tbl.first_row = True
+    tbl.horz_banding = False
+    for i, cw in enumerate(widths):
+        tbl.columns[i].width = Inches(cw)
+    tbl.rows[0].height = Inches(head_h)
+    for r in range(1, n_rows):
+        tbl.rows[r].height = Inches(row_h)
+    for r, row in enumerate(rows):
+        for c, val in enumerate(row):
+            cell = tbl.cell(r, c)
+            cell.margin_left = Inches(0.07); cell.margin_right = Inches(0.07)
+            cell.margin_top = Inches(0.02); cell.margin_bottom = Inches(0.02)
+            cell.vertical_anchor = MSO_ANCHOR.MIDDLE
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = head_fill if r == 0 else WHITE
+            tfr = cell.text_frame
+            tfr.word_wrap = True
+            p = tfr.paragraphs[0]
+            p.line_spacing = 1.0
+            if aligns:
+                p.alignment = {"l": PP_ALIGN.LEFT, "r": PP_ALIGN.RIGHT,
+                               "c": PP_ALIGN.CENTER}[aligns[c]]
+            txt, bold, color = (val if isinstance(val, tuple)
+                                else (val, r == 0, INK if r == 0 else INK))
+            run = p.add_run(); run.text = txt
+            run.font.size = Pt(head_size if r == 0 else size)
+            run.font.bold = bold
+            run.font.name = F
+            run.font.color.rgb = color
+    return tbl
+
+
+def picture(slide, path, x, y, w=None, h=None):
+    return slide.shapes.add_picture(str(path), Inches(x), Inches(y),
+                                    Inches(w) if w else None,
+                                    Inches(h) if h else None)
+
+
+# ---------------------------------------------------------------- slide frame
+
+prs = Presentation(SRC)
+
+
+def set_title(slide, text, size=28):
     for sh in slide.shapes:
         if sh.has_text_frame and sh.name.startswith("Title"):
             sh.left, sh.width = Inches(1.95), Inches(8.55)
-            sh.top, sh.height = Inches(0.10), Inches(1.05)
+            sh.top, sh.height = Inches(0.12), Inches(1.00)
             tf = sh.text_frame
             tf.word_wrap = True
             for p in list(tf.paragraphs)[1:]:
@@ -91,64 +180,86 @@ def set_title(slide, text, size=30):
                 r._r.getparent().remove(r._r)
             r = p.add_run(); r.text = text
             r.font.size = Pt(size); r.font.bold = True
-            r.font.name = BODY; r.font.color.rgb = INK
-            return sh
-    raise AssertionError("no title placeholder on slide")
+            r.font.name = F; r.font.color.rgb = INK
+            return
+    raise AssertionError("no title placeholder")
 
 
-def drop_body(slide):
-    """Remove the template's instruction TextBox 8 placeholder text block."""
+def strap(slide, text, y=1.18):
+    tf = tf_at(slide, 0.55, y, 12.2, 0.28)
+    line(tf, text, 11.5, color=BLUE, first=True)
+
+
+def drop(slide, *names):
     for sh in list(slide.shapes):
-        if sh.name == "TextBox 8":
+        if sh.name in names:
             sh._element.getparent().remove(sh._element)
-            return True
-    return False
 
 
-def eyebrow(slide, text, y=1.30):
-    tf = txbox(slide, 0.55, y, 11.0, 0.30)
-    para(tf, text.upper(), 12, bold=True, color=BLUE, first=True)
-
-
-prs = Presentation(SRC)
-
-# ---- structural work first: drop the instructions slide (7) -----------------
+# =============================================================================
+# The template ships six content slides and one instructions slide. We keep the
+# six it mandates and add annexure slides after them, which is normal practice
+# for SIH: the six carry the submission, the annexure carries the evidence.
+# =============================================================================
 xml_slides = prs.slides._sldIdLst
-slides = list(xml_slides)
-prs.part.drop_rel(slides[6].rId)
-xml_slides.remove(slides[6])
-
+lst = list(xml_slides)
+prs.part.drop_rel(lst[6].rId)          # the "important instructions" slide
+xml_slides.remove(lst[6])
 S = prs.slides
 
+
+_LOGO = None
+
+
+def clone(index_from=5):
+    """Copy an existing content slide, so the SIH furniture comes with it.
+
+    Pictures are re-added rather than deep-copied: a copied <p:pic> keeps the
+    source slide's r:embed, which points at a relationship the new slide does
+    not have, and PowerPoint reports the whole file as corrupt.
+    """
+    global _LOGO
+    from copy import deepcopy
+    import tempfile
+
+    src = S[index_from]
+    new = prs.slides.add_slide(src.slide_layout)
+    for shape in list(new.shapes):
+        shape._element.getparent().remove(shape._element)
+
+    for shape in src.shapes:
+        if shape.shape_type == 13:                       # the SIH logo
+            if _LOGO is None:
+                fh = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                fh.write(shape.image.blob); fh.close()
+                _LOGO = fh.name
+            new.shapes.add_picture(_LOGO, shape.left, shape.top,
+                                   shape.width, shape.height)
+        elif shape.name in ("Rectangle 9", "Rectangle 10", "Oval 8", "Oval 9",
+                            "Oval 10", "Oval 11",
+                            "Slide Number Placeholder 5",
+                            "Footer Placeholder 6", "Title 1"):
+            new.shapes._spTree.append(deepcopy(shape._element))
+    return new
+
+
 # =============================================================================
-# SLIDE 1 - title page
+# 1  Title page
 # =============================================================================
-s1 = S[0]
-for sh in s1.shapes:
+s = S[0]
+for sh in s.shapes:
     if sh.name == "TextBox 9":
-        tf = sh.text_frame
-        tf.clear()
-        tf.word_wrap = True
-        rows = [
-            ("Problem Statement ID", "SIH26002"),
-            ("Problem Statement", "AI-Based Smart Logistics and Accessibility "
-                                  "Intelligence Platform for the North Eastern Region"),
-            ("Theme", "Smart Automation  ·  MDoNER"),
-            ("PS Category", "Software"),
-            ("Team ID", "<your team ID>"),
-            ("Team Name", "<your registered team name>"),
-        ]
-        first = True
-        for label, value in rows:
-            p = tf.paragraphs[0] if first else tf.add_paragraph()
-            first = False
-            p.space_after = Pt(9)
-            r = p.add_run(); r.text = label + " — "
-            r.font.size = Pt(13); r.font.bold = True
-            r.font.name = BODY; r.font.color.rgb = BLUE
-            r2 = p.add_run(); r2.text = value
-            r2.font.size = Pt(13); r2.font.bold = False
-            r2.font.name = BODY; r2.font.color.rgb = INK
+        tf = sh.text_frame; tf.clear(); tf.word_wrap = True
+        rows = [("Problem Statement ID", "SIH26002"),
+                ("Problem Statement", "AI-Based Smart Logistics and Accessibility "
+                                      "Intelligence Platform for the North Eastern Region"),
+                ("Theme", "Smart Automation  |  MDoNER"),
+                ("PS Category", "Software"),
+                ("Team ID", "<your team ID>"),
+                ("Team Name", "<your registered team name>")]
+        for i, (k, v) in enumerate(rows):
+            runs(tf, [(k + "  ", True, BLUE), (v, False, INK)],
+                 size=13, first=(i == 0), after=9)
     if sh.name == "Subtitle 3":
         tf = sh.text_frame
         for p in list(tf.paragraphs)[1:]:
@@ -158,391 +269,726 @@ for sh in s1.shapes:
             r._r.getparent().remove(r._r)
         r = p.add_run(); r.text = "IDEA SUBMISSION"
         r.font.size = Pt(20); r.font.bold = True
-        r.font.name = BODY; r.font.color.rgb = INK
+        r.font.name = F; r.font.color.rgb = INK
 
 # =============================================================================
-# SLIDE 2 - idea title / proposed solution
+# 2  Idea / proposed solution
 # =============================================================================
-s2 = S[1]; drop_body(s2)
-set_title(s2, "Route the North East by risk, not by distance", size=27)
-eyebrow(s2, "Proposed solution")
+s = S[1]; drop(s, "TextBox 8")
+set_title(s, "Plan freight for the North East the way the region actually works", 24)
+strap(s, "Proposed solution")
 
-cards2 = [
-    ("1", BLUE, "One graph, four modes",
-     "Road, rail, the NW-2 waterway and air are separate layers joined by "
-     "transfer edges that charge real handling cost and terminal dwell. "
-     "A flat graph gives transhipment away free — which is why naive "
-     "multimodal plans look better on paper than in a yard."),
-    ("2", AMBER, "The monsoon, priced per segment",
-     "Landslide and flood susceptibility from terrain, elevation and "
-     "per-place NASA rainfall, combined as independent hazards and turned "
-     "into expected delay hours and rupees on every one of 7,181 segments."),
-    ("3", GREEN, "Access, not just routes",
-     "5,594 settlements scored on network travel-hours to market, cold chain "
-     "and the Siliguri gateway — plus where the next facility would bring "
-     "the most places into reach, before anything is built."),
+tf = tf_at(s, 0.55, 1.62, 6.55, 0.30)
+line(tf, "The problem, plainly", 13, bold=True, first=True)
+tf = tf_at(s, 0.55, 1.98, 6.55, 1.55)
+line(tf, "The eight North Eastern states reach the rest of India through one "
+         "22 km strip of land at Siliguri. Highways run single-lane through "
+         "hills that slide. Assam floods every year. The Brahmaputra is a "
+         "national waterway that is barely used. For four months the monsoon "
+         "closes the roads the other eight months depend on.",
+     11, color=GREY, first=True, after=6)
+line(tf, "A shipper today picks a route off a map and a rate card. Neither "
+         "of them knows any of this.", 11, color=INK, bold=True)
+
+tf = tf_at(s, 0.55, 3.72, 6.55, 0.30)
+line(tf, "What we built", 13, bold=True, first=True)
+tf = tf_at(s, 0.55, 4.08, 6.55, 1.30)
+runs(tf, [("One web application that answers two questions.  ", False, GREY),
+          ("First", True, INK),
+          (", what is the cheapest sensible way to move this consignment this "
+           "month — road, rail, river, air, or a mix — and what does it cost "
+           "in rupees and days?  ", False, GREY),
+          ("Second", True, INK),
+          (", which towns and villages are cut off, how much worse does the "
+           "monsoon make it, and where should the next market or cold store "
+           "go?", False, GREY)], size=11, first=True)
+
+tf = tf_at(s, 0.55, 5.52, 6.55, 0.30)
+line(tf, "Why this is not a map with a route on it", 13, bold=True, first=True)
+tf = tf_at(s, 0.55, 5.88, 6.55, 0.80)
+line(tf, "We do not pick the shortest road. We score every stretch on what it "
+         "costs, how long it takes, and how likely the monsoon is to shut it — "
+         "then compare whole journeys, charging for every change of vehicle.",
+     11, color=GREY, first=True)
+
+# the same lane, four ways - the argument in one table
+tf = tf_at(s, 7.35, 1.62, 5.43, 0.30)
+line(tf, "Kohima to Guwahati in July, as the app reports it", 12.5, bold=True,
+     first=True)
+tf = tf_at(s, 7.35, 1.94, 5.43, 0.26)
+line(tf, "One tonne of general cargo. Figures taken from the running system.",
+     9.5, color=FAINT, first=True)
+table(s, 7.35, 2.28, 5.43,
+      [["Way of moving it", "Days", "Cost/tonne", "Delay"],
+       ["Road, then rail  (chosen)", "2.0", "₹928", "22.3 h"],
+       ["Road, then air", "1.4", "₹5,954", "19.1 h"],
+       ["Road only", "7.6", "₹1,661", "5.8 d"],
+       ["Cheapest on paper", "2.0", "₹922", "22.3 h"]],
+      [2.43, 0.75, 1.20, 1.05], aligns="lrrr", row_h=0.32, head_h=0.30, size=10)
+
+tf = tf_at(s, 7.35, 4.05, 5.43, 1.05)
+runs(tf, [("Between the best and the worst choice on this one lane there is ",
+           False, GREY),
+          ("₹5,032 per tonne and 6.2 days", True, INK),
+          (". Road only — the obvious answer — is the worst of the four. "
+           "That gap is what the platform is for.", False, GREY)],
+     size=11, first=True)
+
+rect(s, 7.35, 5.30, 5.43, 1.38, PANEL, None)
+tf = tf_at(s, 7.58, 5.48, 4.97, 1.02)
+line(tf, "What is different about it", 11, bold=True, first=True, after=4)
+line(tf, "Changing vehicle is charged, not free. Risk is a cost in hours and "
+         "rupees, not a warning label. And the chance a road shuts sometime in "
+         "July is kept separate from the chance this lorry meets it.",
+     10, color=GREY)
+
+# =============================================================================
+# 3  Technical approach - the system, drawn
+# =============================================================================
+s = S[2]; drop(s, "TextBox 8")
+set_title(s, "TECHNICAL APPROACH", 28)
+strap(s, "How the system is put together")
+
+L, R = 0.55, 12.78
+mid = (L + R) / 2
+dmid = (1.85 + R) / 2   # the diagram sits right of the band labels
+
+def band_label(y, text):
+    tf = tf_at(s, L, y, 1.55, 0.24, anchor=MSO_ANCHOR.MIDDLE)
+    line(tf, text, 9, bold=True, color=FAINT, first=True)
+
+# band 1 - open data in
+band_label(1.62, "OPEN DATA")
+w1, g1 = 3.44, 0.30
+for i, (t, sub) in enumerate([
+        ("OpenStreetMap", "roads, towns, villages"),
+        ("NASA POWER", "monthly rainfall, per place"),
+        ("Copernicus DEM", "ground height, per node")]):
+    dbox(s, 1.85 + i * (w1 + g1), 1.56, w1, 0.56, t, sub)
+arrow_down(s, dmid, 2.20)
+
+# band 2 - build
+band_label(2.60, "BUILD  (offline)")
+dbox(s, 1.85, 2.48, 5.30, 0.62, "Road network builder",
+     "OSM ways contracted to 7,181 segments over 6,502 junctions · 25,360 km")
+dbox(s, 7.45, 2.48, 5.33, 0.62, "Settlement builder",
+     "5,594 towns and villages joined to their nearest road")
+arrow_down(s, dmid, 3.18)
+
+# band 3 - the engine
+band_label(3.62, "ENGINE")
+rect(s, 1.85, 3.46, 10.93, 1.30, PANEL, None)
+for i, (t, sub) in enumerate([
+        ("Risk model", "landslide + flood\nper segment, per month"),
+        ("Cost model", "₹ per tonne, hours,\nhandling at every transfer"),
+        ("Layered graph", "road / rail / water / air\njoined by transfer edges")]):
+    dbox(s, 2.03 + i * 3.57, 3.62, 3.39, 0.98, t, sub, WHITE, RULE, 10.5, 8.5)
+arrow_down(s, dmid, 4.84)
+
+# band 4 - what it answers
+band_label(5.28, "ANSWERS")
+w4 = 2.65
+for i, (t, sub) in enumerate([
+        ("Plan a shipment", "best route + alternatives"),
+        ("Compare options", "seven ways, side by side"),
+        ("Monsoon risk map", "every road, any month"),
+        ("Who is cut off", "hours to market, siting")]):
+    dbox(s, 1.85 + i * (w4 + 0.11), 5.12, w4, 0.60, t, sub, WHITE, RULE, 10, 8)
+arrow_down(s, dmid, 5.80)
+
+# band 5 - delivery
+dbox(s, 1.85, 6.06, 10.93, 0.52,
+     "One FastAPI process serves the API and the dashboard",
+     "Python · NetworkX · scikit-learn (optional) · MapLibre GL vendored locally · no build step, no CDN, no API key",
+     BAND, None, 10.5, 8.5)
+
+tf = tf_at(s, L, 6.66, 12.23, 0.24)
+line(tf, "Everything left of the dashboard runs offline. The built network, the "
+         "rainfall and the elevation are committed to the repository, so a "
+         "fresh clone works with no internet.", 9.5, color=FAINT, first=True)
+
+
+# =============================================================================
+# 4  Feasibility and viability
+# =============================================================================
+s = S[3]; drop(s, "TextBox 8")
+set_title(s, "FEASIBILITY AND VIABILITY", 28)
+strap(s, "It is already built, and it runs on nothing but free data")
+
+tf = tf_at(s, 0.55, 1.60, 6.05, 0.28)
+line(tf, "What exists today", 12.5, bold=True, first=True)
+table(s, 0.55, 1.92, 6.05,
+      [["What", "How much", "Where it came from"],
+       ["Road network", "25,360 km", "OpenStreetMap"],
+       ["Road segments scored", "7,181", "built here"],
+       ["Towns and villages", "5,594", "OpenStreetMap"],
+       ["Rainfall, per place", "12 months", "NASA POWER"],
+       ["Ground elevation", "8 – 4,016 m", "Copernicus DEM"],
+       ["Automated tests", "261 + 30", "written here"],
+       ["Cost of the data", "₹0", "all of it is open"]],
+      [2.30, 1.55, 2.20], aligns="lrl", row_h=0.295, head_h=0.29, size=10)
+
+tf = tf_at(s, 0.55, 4.55, 6.05, 0.95)
+runs(tf, [("It runs offline. ", True, INK),
+          ("The built network, the rainfall and the elevation are committed to "
+           "the repository, so a fresh clone starts with no API key, no account "
+           "and no download. Two commands and it is on screen.", False, GREY)],
+     size=11, first=True)
+
+rect(s, 0.55, 5.62, 6.05, 1.05, PANEL, None)
+tf = tf_at(s, 0.78, 5.80, 5.59, 0.72)
+line(tf, "Cost to run it for a year", 10.5, bold=True, first=True, after=3)
+line(tf, "₹0 for data. One free-tier web service hosts it. The heaviest "
+         "computation is a graph search that finishes in about a second.",
+     10, color=GREY)
+
+tf = tf_at(s, 6.95, 1.60, 5.83, 0.28)
+line(tf, "What could go wrong, and what we did about it", 12.5, bold=True,
+     first=True)
+
+items = [
+    ("India has no live road-closure feed.",
+     "No state PWD publishes closures in a form software can read. So we "
+     "predict from rainfall and terrain instead of observing, and the app is "
+     "built to take driver reports later and learn from them."),
+    ("Population is missing for most villages.",
+     "OpenStreetMap has a population figure for only 15% of them. Ranking by "
+     "population would rank where volunteers typed a number — on the real "
+     "network that reversed our cold-store answer. So we rank by how many "
+     "settlements a site reaches. Census 2011 would fix it properly."),
+    ("Only 35 markets are mapped for 5,594 villages.",
+     "So the 'hours to a market' figures are pessimistic and many places score "
+     "zero. It is the first thing to fix, and Agmarknet has the data."),
+    ("The free map and elevation services rate-limit.",
+     "Downloading is a separate step with an offline path. One person fetches "
+     "once; everyone else builds from the saved file."),
 ]
-cw, gap = 3.87, 0.31
-for i, (num, col, head, body) in enumerate(cards2):
-    x = 0.55 + i * (cw + gap)
-    card(s2, x, 1.78, cw, 2.62)
-    badge(s2, x + 0.26, 2.00, 0.40, num, col, size=13)
-    tf = txbox(s2, x + 0.26, 2.52, cw - 0.52, 0.34)
-    para(tf, head, 14, bold=True, color=INK, first=True)
-    tf2 = txbox(s2, x + 0.26, 2.92, cw - 0.52, 1.32)
-    para(tf2, body, 11, color=MUTE, first=True, line=1.18)
+y = 1.95
+for head, body in items:
+    tf = tf_at(s, 6.95, y, 5.83, 0.26)
+    line(tf, head, 11, bold=True, first=True)
+    tf = tf_at(s, 6.95, y + 0.26, 5.83, 0.90)
+    line(tf, body, 10, color=GREY, first=True, spacing=1.12)
+    y += 1.22
 
-# uniqueness band
-band = card(s2, 0.55, 4.62, 12.23, 2.05, fill=INK, border=None)
-tf = txbox(s2, 0.90, 4.86, 7.35, 0.30)
-para(tf, "WHY THIS IS DIFFERENT", 12, bold=True, color=RGBColor(0x8F, 0xC5, 0xE8), first=True)
-tf = txbox(s2, 0.90, 5.24, 7.35, 1.20)
-lines = [
-    "Optimises generalised cost — ₹ + time + expected disruption — never distance.",
-    "Separates monthly risk from per-trip risk, so a hill route is expensive, not unusable.",
-    "Answers the accessibility half MDoNER actually invests against, not only the routing half.",
+# =============================================================================
+# 5  Impact and benefits
+# =============================================================================
+s = S[4]; drop(s, "TextBox 8")
+set_title(s, "IMPACT AND BENEFITS", 28)
+strap(s, "Numbers the running system produced, not estimates")
+
+tf = tf_at(s, 0.55, 1.60, 6.95, 0.28)
+line(tf, "One lane, one month: Kohima to Guwahati in July", 12.5, bold=True,
+     first=True)
+table(s, 0.55, 1.92, 6.95,
+      [["How you move it", "Door to door", "Cost per tonne", "Delay expected"],
+       [("Road, then rail — recommended", True, INK), ("2.0 d", True, INK),
+        ("₹928", True, INK), ("22.3 h", True, INK)],
+       ["Cheapest on paper", "2.0 d", "₹922", "22.3 h"],
+       ["Road, then air — fastest", "1.4 d", "₹5,954", "19.1 h"],
+       ["Road only", "7.6 d", "₹1,661", "5.8 d"]],
+      [2.85, 1.30, 1.45, 1.35], aligns="lrrr", row_h=0.32, head_h=0.30, size=10)
+
+tf = tf_at(s, 0.55, 3.65, 6.95, 0.62)
+runs(tf, [("Choosing badly on this one lane costs ", False, GREY),
+          ("₹5,032 per tonne, or 6.2 days", True, INK),
+          (". Road only — the answer most people would give — is the worst of "
+           "the four.", False, GREY)], size=11.5, first=True)
+
+tf = tf_at(s, 0.55, 4.45, 6.95, 0.28)
+line(tf, "What the monsoon does, on the same plan", 12.5, bold=True, first=True)
+table(s, 0.55, 4.77, 6.95,
+      [["Aizawl to Guwahati, road and rail", "January", "July", "Change"],
+       ["Door to door", "64.5 h", "135.3 h", ("+70.8 h", True, RED)],
+       ["Cost per tonne", "₹1,715", "₹2,102", ("+₹387", True, RED)],
+       ["Worst stretch, chance of closing", "8%", "48%", ("+40 pts", True, RED)]],
+      [3.15, 1.20, 1.20, 1.40], aligns="lrrr", row_h=0.30, head_h=0.30, size=10)
+
+tf = tf_at(s, 8.05, 1.60, 4.73, 0.28)
+line(tf, "Who this helps", 12.5, bold=True, first=True)
+who = [
+    ("Farmers and FPOs",
+     "Billbari in Assam is 1.3 days from a market in the monsoon. Knowing that "
+     "before harvest changes what you plant and when you sell it."),
+    ("Transporters and 3PLs",
+     "A defended mode mix per consignment, with handling charged and the "
+     "monsoon delay priced, instead of a rate card and a guess."),
+    ("MDoNER, NEC and state PWDs",
+     "Rank corridor spending by the risk that is actually there. In July, "
+     "1,309 of 4,033 major roads are at severe risk — and on 1,055 of them the "
+     "problem is flooding, not landslides. You do not fix a flood with slope "
+     "netting."),
+    ("Disaster management cells",
+     "See which places lose their road link first, before the season starts."),
 ]
-for i, t in enumerate(lines):
-    para(tf, "•   " + t, 12, color=WHITE, first=(i == 0), space_after=7, line=1.1)
-
-card(s2, 8.60, 4.86, 4.00, 1.58, fill=RGBColor(0x1B, 0x4A, 0x58), border=None)
-tf = txbox(s2, 8.82, 5.02, 3.56, 0.28)
-para(tf, "AIZAWL → GUWAHATI, SAME PLAN", 10, bold=True,
-     color=RGBColor(0x9F, 0xD2, 0xC4), first=True)
-tf = txbox(s2, 8.82, 5.34, 3.56, 0.62)
-p = tf.paragraphs[0]
-r = p.add_run(); r.text = "64.5 h"
-r.font.size = Pt(28); r.font.bold = True; r.font.name = NUMF; r.font.color.rgb = GREEN
-r = p.add_run(); r.text = "   →   "
-r.font.size = Pt(18); r.font.name = BODY; r.font.color.rgb = WHITE
-r = p.add_run(); r.text = "135.3 h"
-r.font.size = Pt(28); r.font.bold = True; r.font.name = NUMF; r.font.color.rgb = RED
-tf = txbox(s2, 8.82, 6.02, 3.56, 0.30)
-para(tf, "January vs July · ₹1,715 → ₹2,102 per tonne", 10.5,
-     color=RGBColor(0xC8, 0xD8, 0xDE), first=True)
+y = 1.95
+for head, body in who:
+    tf = tf_at(s, 8.05, y, 4.73, 0.26)
+    line(tf, head, 11, bold=True, first=True)
+    tf = tf_at(s, 8.05, y + 0.26, 4.73, 0.92)
+    line(tf, body, 10, color=GREY, first=True, spacing=1.12)
+    y += 1.24
 
 # =============================================================================
-# SLIDE 3 - technical approach
+# 6  Research and references
 # =============================================================================
-s3 = S[2]; drop_body(s3)
-set_title(s3, "TECHNICAL APPROACH", size=30)
-eyebrow(s3, "From open data to a routing decision")
+s = S[5]; drop(s, "TextBox 8")
+set_title(s, "RESEARCH AND REFERENCES", 28)
+strap(s, "Everything used here is open, free and cited in the repository")
 
-steps = [
-    ("1", "Ingest open data", BLUE,
-     "OpenStreetMap via Overpass, scoped to nine state relations · NASA POWER "
-     "rainfall climatology · Copernicus DEM elevation. No keys, no licences."),
-    ("2", "Build the graph", BLUE,
-     "Contract 14,531 OSM ways into 7,181 segments over 6,502 junctions — "
-     "25,360 km — then layer it by mode and charge every transhipment."),
-    ("3", "Score the hazard", AMBER,
-     "Analytic susceptibility from terrain, rainfall, elevation and carriageway "
-     "width; an optional gradient-boosted model refines it. Landslide ⊕ flood."),
-    ("4", "Optimise", GREEN,
-     "Dijkstra on generalised cost for the plan, Yen's k-shortest paths for the "
-     "alternatives, per-request weights over cost, time and risk."),
-    ("5", "Serve", GREEN,
-     "One FastAPI process serves the API and the MapLibre dashboard. No build "
-     "step, no CDN, no runtime npm — it demos on a blocked venue network."),
+tf = tf_at(s, 0.55, 1.60, 6.05, 0.28)
+line(tf, "Data", 12.5, bold=True, first=True)
+table(s, 0.55, 1.92, 6.05,
+      [["Source", "Used for"],
+       ["OpenStreetMap (ODbL)\noverpass-api.de", "Roads, towns and villages"],
+       ["NASA POWER\npower.larc.nasa.gov", "Monthly rainfall for each place"],
+       ["Copernicus DEM via Open-Meteo\nopen-meteo.com", "Ground height, which drives the flood model"],
+       ["NASA COOLR landslide catalog\nmaps.nccs.nasa.gov", "Past landslides, for training (download pending)"]],
+      [2.75, 3.30], aligns="ll", row_h=0.62, head_h=0.30, size=9.5)
+
+tf = tf_at(s, 6.95, 1.60, 5.83, 0.28)
+line(tf, "Policy and method", 12.5, bold=True, first=True)
+table(s, 6.95, 1.92, 5.83,
+      [["Reference", "Why it matters here"],
+       ["MDoNER / NEC Regional Plan", "The connectivity priorities this is built against"],
+       ["IWAI, National Waterway 2", "Brahmaputra navigability and terminal locations"],
+       ["Dijkstra (1959)", "Shortest path — how the plan is found"],
+       ["Yen (1971), Management Science 17(11)", "k shortest loopless paths — how alternatives are found"],
+       ["Sagarmala and Bharatmala NE corridors", "Planned infrastructure the model can be re-run against"]],
+      [2.55, 3.28], aligns="ll", row_h=0.44, head_h=0.30, size=9.5)
+
+rect(s, 0.55, 5.75, 12.23, 0.62, PANEL, None)
+tf = tf_at(s, 0.80, 5.90, 11.73, 0.34)
+runs(tf, [("Code, tests and the full method notes:  ", False, GREY),
+          ("github.com/Jeffrey2600/Logistics_sih", True, INK)],
+     size=12, first=True)
+
+
+# =============================================================================
+# ANNEXURE. The six slides above are the submission. These carry the evidence:
+# how the risk number is arrived at, and what the running application shows.
+# =============================================================================
+SHOT_W, SHOT_H = 8.30, 4.93          # 3200x1900 screenshots
+NOTE_X, NOTE_W = 9.10, 3.68
+
+
+def result_slide(title, strapline, shot, notes, footnote=None):
+    s = clone()
+    set_title(s, title, 26)
+    strap(s, strapline)
+    picture(s, SHOTS / shot, 0.55, 1.58, SHOT_W, SHOT_H)
+    rect(s, 0.55, 1.58, SHOT_W, SHOT_H, None, RULE, 0.75)
+    y = 1.58
+    for head, body in notes:
+        tf = tf_at(s, NOTE_X, y, NOTE_W, 0.26)
+        line(tf, head, 11, bold=True, first=True)
+        tf = tf_at(s, NOTE_X, y + 0.25, NOTE_W, 0.95)
+        line(tf, body, 10, color=GREY, first=True, spacing=1.13)
+        y += 1.18
+    if footnote:
+        tf = tf_at(s, 0.55, 6.60, 12.23, 0.24)
+        line(tf, footnote, 9, color=FAINT, first=True)
+    return s
+
+
+# --- A1  how a risk number is built -----------------------------------------
+s = clone()
+set_title(s, "How one road gets its risk number", 26)
+strap(s, "Worked through on a real segment: Nolikata – Ranikor, Meghalaya, in July")
+
+col = [("Terrain", "plain, from how much\nthe road bends"),
+       ("Rainfall", "NASA POWER, this\nplace, this month"),
+       ("Ground height", "Copernicus DEM,\nmetres above sea"),
+       ("Carriageway", "1 lane, from the\nOSM tags")]
+for i, (t, sub) in enumerate(col):
+    dbox(s, 0.55 + i * 3.13, 1.62, 2.93, 0.72, t, sub, WHITE, RULE, 10.5, 8.5)
+    arrow_down(s, 0.55 + i * 3.13 + 1.465, 2.42, 0.20)
+
+rect(s, 0.55, 2.74, 12.23, 1.02, PANEL, None)
+dbox(s, 0.90, 2.92, 5.35, 0.66, "Landslide susceptibility",
+     "steepness + rainfall + how narrow the road is", WHITE, RULE, 11, 9)
+dbox(s, 7.08, 2.92, 5.35, 0.66, "Flood susceptibility",
+     "how low and flat the ground is + the season", WHITE, RULE, 11, 9)
+tf = tf_at(s, 0.90, 3.58, 5.35, 0.22)
+line(tf, "0.2821", 10.5, bold=True, color=AMBER, first=True, align=PP_ALIGN.CENTER)
+tf = tf_at(s, 7.08, 3.58, 5.35, 0.22)
+line(tf, "0.3981", 10.5, bold=True, color=AMBER, first=True, align=PP_ALIGN.CENTER)
+arrow_down(s, mid, 3.84, 0.22)
+
+dbox(s, 3.30, 4.16, 6.73, 0.62,
+     "Combine them as two independent hazards",
+     "1 − (1 − 0.2821) × (1 − 0.3981)  =  0.5679", BAND, None, 11, 10)
+arrow_down(s, mid, 4.86, 0.22)
+
+dbox(s, 0.55, 5.18, 3.90, 0.70, "57% chance of being blocked",
+     "at some point in July — this is what the map colours",
+     WHITE, RED, 11, 8.5, RED)
+dbox(s, 4.75, 5.18, 3.83, 0.70, "11% chance this lorry meets it",
+     "a trip crosses in hours, not all month", WHITE, RULE, 11, 8.5)
+dbox(s, 8.88, 5.18, 3.90, 0.70, "5.1 hours of expected delay",
+     "which is what enters the cost of the route", WHITE, RULE, 11, 8.5)
+
+rect(s, 0.55, 6.06, 12.23, 0.62, PANEL, None)
+tf = tf_at(s, 0.80, 6.20, 11.73, 0.36)
+runs(tf, [("Why the middle box matters.  ", True, INK),
+          ("Treating 'this road is blocked sometime in July' as 'this lorry "
+           "will be blocked' prices every hill route as if the closure were "
+           "certain. Every mountain road then looks unusable rather than "
+           "merely expensive, and the plan flies everything.", False, GREY)],
+     size=10.5, first=True)
+
+# --- A2  plan a shipment ----------------------------------------------------
+result_slide(
+    "Result 1 — Plan a shipment", "Kohima to Guwahati, July, one tonne of general cargo",
+    "01-route.png",
+    [("You pick five things",
+      "Where from, where to, which month, what you are shipping, and what "
+      "matters most. Modes can be switched off one by one."),
+     ("It answers in four numbers",
+      "2.0 days door to door, ₹928 a tonne, 338.1 km travelled, and 22.3 hours "
+      "of delay already counted inside the 2.0 days."),
+     ("The colour change is the point",
+      "Blue is road, purple is rail. Where the line changes colour the cargo "
+      "is unloaded and reloaded, and the app charges 6 hours and ₹250 a tonne "
+      "for it at Dimapur."),
+     ("Below the fold, leg by leg",
+      "“Transhipment at Dimapur, road to rail, 6.0 h, ₹250/t.” Then "
+      "“Dimapur to Guwahati, rail, NFR, 290 km, 12.3 h, elevated risk.” "
+      "Every leg, with its highway number and its risk band.")],
+    "Screenshot taken from the running application. The basemap tiles are blocked "
+    "on this network, so the map draws our own data on a blank ground — by design.")
+
+# --- A3  the risk map -------------------------------------------------------
+result_slide(
+    "Result 2 — Monsoon risk, every road", "The whole network in July, coloured by the chance of being blocked",
+    "02-risk.png",
+    [("4,067 roads over 5 km",
+      "Shorter link roads are hidden by the slider, because thousands of "
+      "30-metre stubs make the picture unreadable."),
+     ("Green, amber, red",
+      "Usually open, often disrupted, frequently blocked. Line thickness "
+      "repeats the same information, so the map still works for a "
+      "colour-blind viewer and in black and white."),
+     ("Slide the month",
+      "Watch the network deteriorate through June to September and recover. "
+      "The hazard box separates landslides from floods, because they hit "
+      "different roads."),
+     ("The worst list is Meghalaya, and it is flood",
+      "Shella and Jasir at 57%. Of all the roads shown, 6,316 are at more "
+      "risk from flooding than from landslides.")])
+
+# --- A4  who is cut off -----------------------------------------------------
+result_slide(
+    "Result 3 — Who is cut off", "5,505 towns and villages scored on travel hours, not map distance",
+    "03-access.png",
+    [("Scored out of 100",
+      "100 is a place with a market, cold storage and the national gateway all "
+      "close by. The score blends travel time to each, plus how much worse the "
+      "monsoon makes it."),
+     ("Hours, never kilometres",
+      "The score comes from a search over the real network. A village 20 km "
+      "away across a gorge is not 20 km away."),
+     ("Namsai is 4.0 days from a market",
+      "Changliang in Arunachal is 7.1 days. Billbari in Assam is 1.3 days — "
+      "and that is in the monsoon."),
+     ("Mostly red, and we say why",
+      "Only 35 markets are mapped in the whole region, so the scores are "
+      "pessimistic. Loading the Agmarknet market list is the single biggest "
+      "improvement left.")])
+
+# --- A5  compare the options ------------------------------------------------
+s = clone()
+set_title(s, "Result 4 — Compare every option", 26)
+strap(s, "The same consignment, seven ways, with the app's own plain-English reading")
+
+# The Analysis tab leaves the map on whatever the previous tab drew, so the
+# map adds nothing here. Crop to the panel, which is the actual result, and
+# show it big enough to read.
+picture(s, SHOTS / "04b-compare-crop.png", 0.55, 1.58, 2.77, 5.07)
+rect(s, 0.55, 1.58, 2.77, 5.07, None, RULE, 0.75)
+
+tf = tf_at(s, 0.55, 6.74, 2.77, 0.30)
+line(tf, "The Analysis panel, full height", 9, color=FAINT, first=True)
+
+rect(s, 3.62, 5.92, 9.16, 0.75, PANEL, None)
+tf = tf_at(s, 3.87, 6.06, 8.66, 0.50)
+runs(tf, [("The app writes this itself:  ", True, INK),
+          ("“Across all options the spread is ₹5,032 per tonne and 6.2 days "
+           "— the cost of choosing badly on this lane.”", False, GREY)],
+     size=11.5, first=True)
+
+tf = tf_at(s, 3.62, 1.58, 9.16, 0.26)
+line(tf, "Every option, as the app lists it", 11.5, bold=True, first=True)
+table(s, 3.62, 1.90, 9.16,
+      [["Option", "Route", "Time", "Cost/t"],
+       [("Recommended", True, INK), ("road → rail", True, INK),
+        ("2.0 d", True, INK), ("₹928", True, INK)],
+       ["Lowest freight cost", "road → rail", "2.0 d", "₹922"],
+       ["Fastest door to door", "road → air", "1.4 d", "₹5,954"],
+       ["Most reliable", "road → rail", "2.0 d", "₹928"],
+       ["Road only", "road", "7.6 d", "₹1,661"],
+       ["Surface only", "road → rail", "2.0 d", "₹928"],
+       ["Rail and waterway", "road → rail", "2.0 d", "₹928"]],
+      [3.28, 2.30, 1.68, 1.90], aligns="llrr", row_h=0.33, head_h=0.31, size=10.5)
+
+tf = tf_at(s, 3.62, 4.66, 4.42, 0.26)
+line(tf, "Why several options look identical", 11, bold=True, first=True)
+tf = tf_at(s, 3.62, 4.94, 4.42, 0.85)
+line(tf, "Because on this lane they are. Only 4 of the 7 are genuinely "
+         "different journeys, and the app says so rather than padding the "
+         "table out to look busy.", 10, color=GREY, first=True)
+
+tf = tf_at(s, 8.36, 4.66, 4.42, 0.26)
+line(tf, "Reading the fastest row", 11, bold=True, first=True)
+tf = tf_at(s, 8.36, 4.94, 4.42, 0.95)
+line(tf, "Air saves 14.1 hours and costs ₹5,026 a tonne more. Worth it only if "
+         "the cargo loses more than that while it waits — which is exactly the "
+         "judgement a rate card cannot make for you.", 10, color=GREY,
+     first=True)
+
+# --- A6  status -------------------------------------------------------------
+s = clone()
+set_title(s, "What is finished, and what comes next", 26)
+strap(s, "Stated plainly, because the gaps are as informative as the features")
+
+tf = tf_at(s, 0.55, 1.60, 6.05, 0.28)
+line(tf, "Working now", 12.5, bold=True, first=True)
+table(s, 0.55, 1.92, 6.05,
+      [["Capability", "State"],
+       ["Multimodal route planning", "Working"],
+       ["Alternative routes", "Working"],
+       ["Dry season vs monsoon comparison", "Working"],
+       ["Option comparison, seven scenarios", "Working"],
+       ["Risk map, landslide and flood", "Working"],
+       ["Accessibility scoring, 5,505 places", "Working"],
+       ["Facility siting", "Working"],
+       ["Closure simulation (shut a road, re-plan)", "Working"]],
+      [4.35, 1.70], aligns="ll", row_h=0.30, head_h=0.29, size=10)
+
+tf = tf_at(s, 6.95, 1.60, 5.83, 0.28)
+line(tf, "Next, in the order we would do it", 12.5, bold=True, first=True)
+nxt = [
+    ("Load the Agmarknet market list",
+     "35 mapped markets for 5,594 villages is why most places score zero. "
+     "This is the one change that most improves the accessibility answer."),
+    ("Join the Census 2011 village directory",
+     "Replaces the 15% of population figures OpenStreetMap happens to carry."),
+    ("Add observed flood extent (Sentinel-1)",
+     "Replaces the single constant that stands in for how much floodplain road "
+     "is actually cut in a normal monsoon."),
+    ("Collect closure reports in the app",
+     "The only way to turn a prediction into something that learns."),
 ]
-y = 1.78
-for num, head, col, body in steps:
-    badge(s3, 0.55, y + 0.06, 0.42, num, col, size=13)
-    tf = txbox(s3, 1.18, y + 0.02, 6.45, 0.28)
-    para(tf, head, 13.5, bold=True, color=INK, first=True)
-    tf = txbox(s3, 1.18, y + 0.36, 6.45, 0.60)
-    para(tf, body, 10.5, color=MUTE, first=True, line=1.14)
-    y += 0.98
+y = 1.95
+for head, body in nxt:
+    tf = tf_at(s, 6.95, y, 5.83, 0.26)
+    line(tf, head, 11, bold=True, first=True)
+    tf = tf_at(s, 6.95, y + 0.26, 5.83, 0.80)
+    line(tf, body, 10, color=GREY, first=True, spacing=1.12)
+    y += 1.02
 
-card(s3, 8.05, 1.78, 4.73, 2.10)
-tf = txbox(s3, 8.32, 1.98, 4.19, 0.28)
-para(tf, "STACK", 11, bold=True, color=BLUE, first=True)
-tf = txbox(s3, 8.32, 2.34, 4.19, 1.62)
-for i, t in enumerate([
-    "Python 3 · FastAPI · Pydantic",
-    "NetworkX — mode-layered graph",
-    "scikit-learn — optional risk model",
-    "MapLibre GL, vendored locally",
-    "Pure static frontend, zero build",
-]):
-    para(tf, "•  " + t, 11, color=INK, first=(i == 0), space_after=5)
-
-card(s3, 8.05, 4.06, 4.73, 2.54)
-tf = txbox(s3, 8.32, 4.28, 4.19, 0.28)
-para(tf, "PROVEN, NOT PROMISED", 11, bold=True, color=GREEN, first=True)
-tf = txbox(s3, 8.32, 4.66, 4.19, 1.80)
-for i, t in enumerate([
-    "260 unit tests · 30 browser checks",
-    "Runs offline on a fresh clone — network, "
-    "rainfall and elevation are committed",
-    "/health reports connectivity, so a "
-    "fragmented build is visible before anyone trusts it",
-]):
-    para(tf, "•  " + t, 11, color=INK, first=(i == 0), space_after=6, line=1.12)
+rect(s, 0.55, 5.35, 6.05, 1.32, PANEL, None)
+tf = tf_at(s, 0.80, 5.52, 5.55, 1.00)
+line(tf, "Not modelled, and worth saying out loud", 11, bold=True, first=True,
+     after=4)
+line(tf, "Earthquakes. The North East is in Seismic Zone V, India's highest, so "
+         "a major quake is the single largest threat to these corridors — and "
+         "this platform says nothing about it. Nor about bandhs, blockades or "
+         "bridge failures.", 10, color=GREY)
 
 # =============================================================================
-# SLIDE 4 - feasibility and viability
+# Speaker notes. Written for someone presenting this who did not build it:
+# what to say, in the order to say it, in plain words.
 # =============================================================================
-s4 = S[3]; drop_body(s4)
-set_title(s4, "FEASIBILITY AND VIABILITY", size=30)
-eyebrow(s4, "Built and running today, on free-tier resources")
+NOTES = [
+"""Start with the place, not the software. Nobody in the room has driven these roads.
 
-tiles = [
-    ("25,360", "km of road network built from OSM"),
-    ("5,594", "settlements scored for accessibility"),
-    ("290", "automated tests, unit and browser"),
-    ("₹0", "data cost — every source is open"),
+Say: the eight North Eastern states are joined to the rest of India by one
+strip of land about 22 km wide, near Siliguri. The highways are mostly single
+lane and they run through hills that slide. Assam floods every year. And for
+four months of the year the monsoon shuts the roads that the other eight months
+depend on.
+
+MDoNER asked for a platform that plans freight across all of that and tells
+them which places are cut off. We built both halves, and it is running
+software - the screenshots later in this deck are from the live app, not
+mock-ups.""",
+
+"""One sentence to land here: everyone else finds the shortest road; the North
+East punishes that.
+
+Walk the left side first, then let the table do the work.
+
+The table is the whole argument. The same one tonne, Kohima to Guwahati, in
+July. Road then rail is 2 days and ₹928. Air is faster but ₹5,954. Road only -
+which is what most people would say - is 7.6 days, the worst of the four.
+
+So the gap between a good choice and an obvious choice on this single lane is
+₹5,032 a tonne. Multiply that across a season.
+
+If asked what is new: three things. Changing vehicle costs money and time in our
+model, not zero. Risk is converted into hours and rupees instead of a warning
+colour. And we keep 'this road shuts sometime in July' separate from 'this lorry
+will be stopped' - which sounds like a detail and is not, and there is a whole
+slide on it later.""",
+
+"""Do not read every box. Point at the shape and give it four sentences.
+
+Top: three free, open data sources. No licences, no keys.
+
+Middle: we turn OpenStreetMap into something a computer can route on.
+OpenStreetMap is a drawing, not a road network - one highway is hundreds of
+separate pieces - so we join them into 7,181 real segments.
+
+The engine is three parts: what a road costs, how likely it is to be blocked,
+and a graph where road, rail, river and air are separate layers joined by
+transfer links.
+
+Bottom: one Python process serves both the API and the dashboard. No build step,
+nothing downloaded at runtime. Point at that line and say: this is why the demo
+will work even if the venue wifi does not.""",
+
+"""This is the slide that separates a working thing from an idea.
+
+Left table: read out two numbers only - 25,360 km of road, and ₹0 for data.
+Everything else is on the slide if they want it.
+
+Then say it runs offline: clone it, install, two commands, it is on screen.
+
+Right side is the honest half, and judges reward it. The strongest one is the
+first: India has no live road-closure feed. No state publishes closures in a
+form software can read. So we predict from rainfall and terrain, and we built
+the app so that driver reports can be collected later and used to correct it.
+
+The third one - only 35 markets mapped - is the weakness in our own numbers, and
+we say so before anyone asks.""",
+
+"""Numbers first, people second.
+
+Top table: the cost of choosing badly on one lane is ₹5,032 a tonne.
+
+Second table: the monsoon adds 70.8 hours and ₹387 a tonne to the same Aizawl
+to Guwahati plan, and the worst stretch on it goes from an 8% chance of closing
+to 48%.
+
+Right side, pick the one that suits the panel. For a policy audience, use the
+MDoNER line: in July, 1,309 of 4,033 major roads are at severe risk, and on
+1,055 of them the problem is flooding, not landslides. You cannot fix a flood
+with slope netting - so knowing which is which changes what gets built.
+
+For a general audience use Billbari: 1.3 days to reach a market in the monsoon.
+That is a farmer's decision about what to plant.""",
+
+"""Keep this short. The point is that nothing here is bought, scraped or
+restricted, so the platform can actually be deployed.
+
+Mention that the landslide catalogue download is still pending rather than
+implying it is loaded - if a judge checks, they will find it, and saying it
+first is worth more than hiding it.
+
+End on the repository link: the code, the tests and the method notes are
+public.""",
+
+"""This is the technical depth slide. Take it slowly, it is worth it.
+
+We take one real road - Nolikata to Ranikor in Meghalaya - and show exactly how
+it gets its number.
+
+Four inputs across the top. Two separate models: landslides come from steepness
+and rain, floods come from low flat ground and the season. They are different
+roads, so they are different models.
+
+Then we combine them the way you combine two independent risks: 0.28 and 0.40
+give 0.57, not 0.68.
+
+Now the three boxes at the bottom, and the middle one is the important one.
+There is a 57% chance this road is blocked at some point in July. But a lorry
+crosses it in a few hours, not all month - so the chance this particular trip
+is affected is 11%. That works out to about 5 hours of expected delay, and it is
+the 5 hours, not the 57%, that goes into the cost of the route.
+
+Why it matters: if you use 57% as the trip risk, every hill road looks
+impassable and the software tells everyone to fly. That is the mistake this
+avoids.""",
+
+"""First of four screenshots from the live app.
+
+Five inputs: from, to, when, what you are shipping, and what matters most. Modes
+can be switched off - useful for 'what if the rail line is down'.
+
+Four answers: 2 days, ₹928 a tonne, 338 km, and 22.3 hours of expected delay
+which is already inside the 2 days.
+
+Point at the map where the line changes from blue to purple. That is Dimapur.
+The cargo comes off a lorry and onto a train, and we charge 6 hours and ₹250 a
+tonne for doing it. Most tools treat that as free, which is why their
+multimodal plans look better than they turn out to be.
+
+If someone asks why the map has no background: the tile server is blocked on
+this network. Our own data still draws. That is deliberate - the map is built to
+work without internet.""",
+
+"""This is the picture people remember. Give them a moment to look at it.
+
+Every road in the region longer than 5 km, coloured by how likely it is to be
+blocked this July. Green usually open, amber often disrupted, red frequently
+blocked.
+
+Two things to point out. The thickness of the line repeats the colour, so it
+still reads if you are colour-blind or if the deck is printed in black and
+white. And the month is a dropdown - you can watch the network fall apart
+through June to September and recover in October.
+
+The finding worth stating: the worst roads on the list are in Meghalaya and the
+hazard is flood, not landslide. Across the whole network 6,316 roads are at more
+risk from water than from slopes.""",
+
+"""This is the half of the problem statement most teams skip, and it is the half
+MDoNER spends money on.
+
+5,505 towns and villages, each scored on how many hours it actually takes to
+reach a market, cold storage and the national gateway - travelling over the real
+network, not measured across a map.
+
+Namsai is 4 days from a market. Changliang is 7.
+
+Be honest about the red. Only 35 markets are mapped in the entire region, so
+most places score badly. It is the first thing we would fix and we know exactly
+how - the Agmarknet market list. Saying that is stronger than pretending the
+map is finished.""",
+
+"""Last screenshot. This is the app arguing with itself, in English.
+
+It has laid out every sensible way to move the consignment and written the
+comparison for you: only 4 of the 7 are genuinely different journeys, air saves
+14 hours and costs ₹5,026 a tonne more, and across all of them the spread is
+₹5,032 a tonne.
+
+That last sentence is generated by the software, not written by us. Read it out.
+
+Then the judgement it leaves to the human: is the cargo losing more than ₹5,026
+a tonne while it waits? If it is perishable, yes. If it is cement, no. A rate
+card cannot make that call.""",
+
+"""Close on honesty. Left column: eight things that work today.
+
+Right column: what we would do next, in order, and why. The first one - loading
+the Agmarknet market list - is the single change that most improves the
+accessibility answer, and we know it.
+
+Then the box at the bottom left, and say it out loud rather than waiting to be
+asked: we do not model earthquakes. The North East is in Seismic Zone V, India's
+highest, so a major quake is the biggest single threat to these corridors and
+this platform says nothing about it. That needs a hazard model crossed with
+structural survey data, which is a research project, not a data join.
+
+Finish with: everything in this deck came out of the running system, and the
+repository is public if you want to check any of it.""",
 ]
-for i, (big, lab) in enumerate(tiles):
-    x = 0.55 + (i % 2) * 2.90
-    yy = 1.85 + (i // 2) * 1.62
-    card(s4, x, yy, 2.72, 1.44)
-    tf = txbox(s4, x + 0.22, yy + 0.20, 2.28, 0.55)
-    para(tf, big, 26, bold=True, color=BLUE, font=NUMF, first=True)
-    tf = txbox(s4, x + 0.22, yy + 0.80, 2.28, 0.52)
-    para(tf, lab, 10.5, color=MUTE, first=True, line=1.12)
 
-tf = txbox(s4, 0.55, 5.20, 5.12, 1.30)
-para(tf, "Free tier is not a compromise here.", 12.5, bold=True, color=INK, first=True)
-para(tf, "OpenStreetMap, NASA POWER and Copernicus are open and unmetered. "
-         "The built network ships inside the repository, so a fresh clone runs "
-         "with no API key, no account and no download.",
-     11, color=MUTE, space_after=0, line=1.16)
-
-risks = [
-    (RED, "No live road-closure feed exists, at any price",
-     "State PWD and NHIDCL publish closures as irregular press notes. "
-     "So the platform predicts risk from rainfall and terrain, and is designed "
-     "to close the loop with driver and operator reports collected in-app."),
-    (AMBER, "OSM records population on only 15% of settlements",
-     "Ranking by population ranks where contributors filled in a number. "
-     "Facility siting therefore ranks by settlements reached and reports "
-     "coverage alongside. The Census 2011 village directory is the clean fix."),
-    (GREEN, "Overpass and DEM APIs rate-limit hard",
-     "Download is an isolated layer with an offline --from-file path. "
-     "One teammate fetches once; the built artefacts are committed, so nothing "
-     "at runtime depends on a mirror being up."),
-]
-card(s4, 6.42, 1.85, 6.36, 4.68, fill=TINT)
-tf = txbox(s4, 6.74, 2.06, 5.72, 0.28)
-para(tf, "CHALLENGES, AND HOW THEY ARE HANDLED", 11, bold=True, color=INK, first=True)
-yy = 2.48
-for col, head, body in risks:
-    badge(s4, 6.74, yy + 0.03, 0.20, "", col)
-    tf = txbox(s4, 7.10, yy - 0.02, 5.36, 0.30)
-    para(tf, head, 12, bold=True, color=INK, first=True)
-    tf = txbox(s4, 7.10, yy + 0.32, 5.36, 0.95)
-    para(tf, body, 10.5, color=MUTE, first=True, line=1.15)
-    yy += 1.38
-
-# =============================================================================
-# SLIDE 5 - impact and benefits
-# =============================================================================
-s5 = S[4]; drop_body(s5)
-set_title(s5, "IMPACT AND BENEFITS", size=30)
-eyebrow(s5, "What the platform changes, in numbers it produces today")
-
-stats = [
-    ("₹5,032", RED, "per tonne",
-     "separates the best and worst way to move freight Kohima → Guwahati in "
-     "July. Rail-mixed: 48.3 h at ₹928. Air: 34.2 h at ₹5,954."),
-    ("+70.8 h", AMBER, "monsoon penalty",
-     "on the same Aizawl → Guwahati plan — 64.5 h in January, 135.3 h in "
-     "July. Shippers see it before the truck leaves, not after."),
-    ("1,309", BLUE, "segments at severe risk",
-     "of the 4,033 major roads in July — and on 1,055 of them it is flood, "
-     "not landslide, that dominates. That changes what you build."),
-]
-cw, gap = 3.87, 0.31
-for i, (big, col, small, body) in enumerate(stats):
-    x = 0.55 + i * (cw + gap)
-    card(s5, x, 1.78, cw, 2.12)
-    tf = txbox(s5, x + 0.26, 1.98, cw - 0.52, 0.60)
-    para(tf, big, 30, bold=True, color=col, font=NUMF, first=True)
-    tf = txbox(s5, x + 0.26, 2.62, cw - 0.52, 0.26)
-    para(tf, small.upper(), 10, bold=True, color=MUTE, first=True)
-    tf = txbox(s5, x + 0.26, 2.96, cw - 0.52, 0.96)
-    para(tf, body, 11, color=INK, first=True, line=1.16)
-
-card(s5, 0.55, 4.12, 12.23, 2.55, fill=TINT)
-tf = txbox(s5, 0.88, 4.34, 11.57, 0.28)
-para(tf, "WHO BENEFITS", 11, bold=True, color=INK, first=True)
-rows = [
-    (GREEN, "Farmers and FPOs",
-     "Billbari reaches a market in 3.9 h in the dry season and 32.0 h in the "
-     "monsoon. Knowing which day it is decides what you plant and when you sell."),
-    (BLUE, "Transporters and 3PLs",
-     "A defensible mode mix per consignment, with the transhipment cost counted "
-     "and the monsoon delay priced, instead of a rate card and a guess."),
-    (AMBER, "MDoNER, NEC and state PWDs",
-     "Site a cold store where it reaches 155 settlements rather than 79, and "
-     "rank corridor spending by the risk that is actually there."),
-]
-yy = 4.76
-for col, head, body in rows:
-    badge(s5, 0.88, yy + 0.04, 0.20, "", col)
-    tf = txbox(s5, 1.24, yy - 0.01, 2.70, 0.30)
-    para(tf, head, 12, bold=True, color=INK, first=True)
-    tf = txbox(s5, 4.10, yy - 0.01, 8.35, 0.52)
-    para(tf, body, 11, color=MUTE, first=True, line=1.14)
-    yy += 0.60
-
-# =============================================================================
-# SLIDE 6 - research and references
-# =============================================================================
-s6 = S[5]; drop_body(s6)
-set_title(s6, "RESEARCH AND REFERENCES", size=30)
-eyebrow(s6, "Every source is open, free and cited in the repository")
-
-left = [
-    ("OpenStreetMap · Overpass API",
-     "Road network and 8,092 named settlements. © OSM contributors, ODbL. "
-     "overpass-api.de"),
-    ("NASA POWER",
-     "Monthly rainfall climatology per place, free and key-less. "
-     "power.larc.nasa.gov"),
-    ("Copernicus DEM · Open-Meteo",
-     "Ground elevation for every network node, 8 m to 4,016 m. "
-     "open-meteo.com/en/docs/elevation-api"),
-    ("NASA COOLR · Global Landslide Catalog",
-     "Landslide occurrences for model training. "
-     "maps.nccs.nasa.gov/arcgis/apps/MapAndAppGallery"),
-]
-right = [
-    ("MDoNER · NEC Regional Plan",
-     "Regional connectivity priorities and investment framing for the NER."),
-    ("IWAI · National Waterway 2",
-     "Brahmaputra navigability and terminal locations. iwai.nic.in"),
-    ("Yen, J. Y. (1971)",
-     "Finding the k shortest loopless paths in a network. "
-     "Management Science 17(11) — the alternatives algorithm."),
-    ("Dijkstra, E. W. (1959)",
-     "A note on two problems in connexion with graphs. Numerische Mathematik 1."),
-]
-for col_i, items in enumerate((left, right)):
-    x = 0.55 + col_i * 6.42
-    card(s6, x, 1.78, 5.81, 4.05)
-    tf = txbox(s6, x + 0.28, 1.98, 5.25, 0.28)
-    para(tf, ["DATA SOURCES", "POLICY AND METHOD"][col_i], 11, bold=True,
-         color=BLUE, first=True)
-    yy = 2.36
-    for head, body in items:
-        tf = txbox(s6, x + 0.28, yy, 5.25, 0.28)
-        para(tf, head, 12, bold=True, color=INK, first=True)
-        tf = txbox(s6, x + 0.28, yy + 0.28, 5.25, 0.56)
-        para(tf, body, 10.5, color=MUTE, first=True, line=1.13)
-        yy += 0.87
-
-card(s6, 0.55, 6.02, 12.23, 0.62, fill=INK, border=None)
-tf = txbox(s6, 0.88, 6.18, 11.57, 0.32)
-p = tf.paragraphs[0]
-r = p.add_run(); r.text = "Working code and full method notes:  "
-r.font.size = Pt(12); r.font.name = BODY; r.font.color.rgb = RGBColor(0xC8, 0xD8, 0xDE)
-r = p.add_run(); r.text = "github.com/Jeffrey2600/Logistics_sih"
-r.font.size = Pt(12); r.font.bold = True; r.font.name = BODY; r.font.color.rgb = WHITE
-
-# =============================================================================
-# Speaker notes - written for a presenter meeting the project for the first time
-# =============================================================================
-NOTES = {
- 0: """Open with the geography, not the software.
-
-The eight North Eastern states reach the rest of India through the 22 km
-Siliguri Corridor. National highways are single-lane and thread landslide-prone
-gorges. Rail gauge conversion is incomplete. The Brahmaputra is a navigable
-national waterway that is barely used. For four months a year the monsoon closes
-the corridors the other eight months depend on.
-
-MDoNER asked for a platform that plans freight across all of that AND tells them
-which places are cut off. We built both halves. Everything you are about to see
-is running software, not a mock-up.""",
-
- 1: """The one sentence to land: existing tools optimise distance; the North East
-punishes that.
-
-Card 1 - modes are separate graph layers. Moving cargo from a truck to a train
-costs handling money and terminal time, so we charge it. Flat graphs give that
-away free, which is exactly why paper multimodal plans fall apart in a yard.
-
-Card 2 - every segment carries a monsoon disruption probability from terrain,
-elevation and that place's own NASA rainfall. Two hazards, landslide and flood,
-combined as independent risks.
-
-Card 3 - the accessibility half. 5,594 settlements scored on travel HOURS to
-market and cold chain over the real network, never straight-line distance.
-
-The number at the bottom is the whole pitch: the same Aizawl-Guwahati plan is
-64.5 hours in January and 135.3 in July. That is the decision the platform makes
-visible before the truck leaves.
-
-If asked what is unique: we optimise generalised cost - rupees plus time plus
-expected disruption - and we separate the chance a road is shut sometime in July
-from the chance THIS trip meets it. Conflating those makes every hill route look
-unusable instead of merely expensive.""",
-
- 2: """Keep this slide brisk - five steps, one line each.
-
-The step worth dwelling on is 2. OpenStreetMap is a drawing, not a graph: one
-highway is hundreds of way objects. We keep junctions and endpoints, contract
-everything between them, and carry the real traced length. That is how 14,531
-ways become 7,181 usable segments.
-
-Step 3: the analytic model is the default and the machine-learned one is
-optional. That is deliberate - a district officer can act on 'narrow carriageway,
-high rainfall, steep terrain'. They cannot act on 'the gradient booster said
-0.62'.
-
-Step 5 answers the demo question before it is asked: no CDN, no build step,
-MapLibre is vendored. It runs on a blocked venue network.""",
-
- 3: """This is the slide that separates us from an idea.
-
-Left: it is built. 25,360 km of network, 5,594 settlements, 290 automated tests.
-Zero rupees of data cost, because OpenStreetMap, NASA POWER and Copernicus are
-open. The built data ships inside the repository, so a fresh clone runs with no
-API key and no download.
-
-Right: be straight about the limits - judges reward it.
-
-The honest one is the first. India has no machine-readable road-closure feed.
-So we predict from rainfall and terrain, and the platform is designed to close
-that loop with driver reports collected in-app.
-
-Second: OSM has population on only 15% of settlements. Ranking sites by
-population would rank where volunteers typed a number. On the real network that
-actually reversed our cold-store recommendation, so we rank by settlements
-reached instead. Census 2011 is the clean fix.""",
-
- 4: """Three numbers, then who they are for.
-
-Rs 5,032 per tonne separates the best and worst way to move the same consignment
-Kohima to Guwahati in July. Rail-mixed is 48.3 hours at Rs 928; air is 34.2 hours
-at Rs 5,954. Nobody should be picking between those blind.
-
-70.8 hours is what the monsoon adds to the Aizawl-Guwahati plan.
-
-1,309 of 4,033 major roads are at severe risk in July - and on 1,055 the
-dominant hazard is flood, not landslide. That distinction changes what you build:
-you do not fix a flood problem with slope stabilisation.
-
-The Billbari example is the human one - 3.9 hours to a market in the dry season,
-32.0 in the monsoon. That is a farmer's planting decision.
-
-The MDoNER line is the investment case: the platform put a cold store where it
-reaches 155 settlements instead of 79.""",
-
- 5: """Every source is open, free and cited in the repository - no licensed data,
-no scraped data, nothing that stops this being deployed.
-
-COOLR is listed because the landslide-history feature is wired and waiting on
-that download; say so if asked rather than implying it is loaded.
-
-Close on the repository: the code, the tests and the method notes are public. If
-the judges want to run it, they can - clone, pip install, one command.""",
-}
-for i, txt in NOTES.items():
-    S[i].notes_slide.notes_text_frame.text = txt.strip()
-
+for i, text in enumerate(NOTES):
+    S[i].notes_slide.notes_text_frame.text = text.strip()
 
 prs.save(OUT)
-print("wrote", OUT, "slides:", len(prs.slides.__iter__.__self__._sldIdLst))
+print("wrote", OUT, "with", len(prs.slides._sldIdLst), "slides")

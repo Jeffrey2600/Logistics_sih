@@ -88,10 +88,15 @@ async function api(path, options) {
 // A blank local style. The map must draw our own data even when the venue's
 // network blocks the tile host - a demo that dies on conference wifi is no
 // demo at all - so the basemap is an enhancement layered on top of this.
+//
+// The blank ground is light, not dark. Every other surface here is light, the
+// risk palette was validated against a light background, and on a projector a
+// dark slab where the basemap should be reads as a broken page rather than as
+// a map with no tiles. When the real basemap loads it replaces this anyway.
 const BLANK_STYLE = {
   version: 8,
   sources: {},
-  layers: [{ id: "bg", type: "background", paint: { "background-color": "#0b0f14" } }],
+  layers: [{ id: "bg", type: "background", paint: { "background-color": "#eaeef1" } }],
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
 };
 const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
