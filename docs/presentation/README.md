@@ -1,33 +1,34 @@
 # SIH 2026 idea presentation
 
-`SIH26002_NER_Logistics.pptx` — the submission deck, built on the official
-SIH 2026 Idea template.
+Two decks, both built on the official SIH 2026 Idea template.
 
-## Structure
+## `SIH26002_NER_Logistics_Submission6.pptx` — submit this one
 
-Twelve slides. The first six are the ones SIH's template asks for, in its
-order:
+Exactly **6 slides**, matching the template's own "Important Instructions"
+slide to the letter:
 
-1. Title
-2. Idea / proposed solution
-3. Technical approach — the system, drawn
-4. Feasibility and viability
-5. Impact and benefits
-6. Research and references
+- 6 slides including the title (the instructions slide itself is deleted,
+  as the template says to)
+- Points and diagrams, not paragraphs
+- Every content slide keeps the template's own idea-detail pointers
+  **verbatim**, as a numbered sub-heading (e.g. "Detailed explanation of the
+  proposed solution") — content is filled in under each one, nothing is
+  reworded or dropped
+- Slide 3 (Technical Approach) includes an actual flow diagram, not a
+  screenshot
+- Slide 2 carries one real screenshot of the running app (the network-wide
+  risk map) as its supporting picture
 
-Slides 7–12 are an annexure: how a risk number is arrived at, then the four
-results with screenshots of the running application, then an honest status
-slide. **If the submission portal enforces a six-slide limit, delete slides
-7–12** — the first six stand on their own, and the annexure is what you show
-when the panel asks to see it working.
+**Before submitting:** fill in Team ID and Team Name on slide 1, and the
+"Your Team Name" oval on slides 2–6. The instructions slide also says to
+**save as PDF before uploading** — PowerPoint or Google Slides: File → Save
+As / Download → PDF.
 
-Every slide carries speaker notes written for someone presenting this who did
-not build it. Open the Notes pane in PowerPoint (View → Notes).
+## `SIH26002_NER_Logistics_Extended.pptx` — for practice and deep-dive questions
 
-## Before submitting
-
-- Slide 1: fill in **Team ID** and **Team Name**
-- Slides 2–12: the **"Your Team Name"** oval in the top-left corner
+12 slides: the same 6, followed by an annexure — a worked risk calculation
+and four screenshots of the running app with real values, for rehearsing
+answers to judges' follow-up questions. **Not** for the portal upload.
 
 ## Where the numbers came from
 
@@ -39,13 +40,15 @@ Every figure is produced by the code in this repository, not estimated:
 | Risk bands, flood-vs-landslide counts | `load_risk_model().assess()` over the 4,033 major road segments |
 | Network and settlement counts | `data/processed/osm_edges.csv`, `settlement_nodes.csv` |
 | Worked risk example | `GET /network/segments?month=jul` — segment `s1262014179-n4021626563-road` |
+| Facility siting (Haflong vs Kohima) | `accessibility.facility_impact` over the full network |
 
-`screenshots/` holds the captures used on the result slides, taken from the
-running application.
+`screenshots/` holds the captures used in both decks, taken from the running
+application.
 
-## Rebuilding it
+## Rebuilding either deck
 
 ```bash
 pip install python-pptx
-python docs/presentation/build_deck.py <official-template.pptx> out.pptx docs/presentation/screenshots
+python docs/presentation/build_deck_submission6.py <template.pptx> out.pptx docs/presentation/screenshots
+python docs/presentation/build_deck_extended.py    <template.pptx> out.pptx docs/presentation/screenshots
 ```
