@@ -1,4 +1,9 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-pydantic==2.10.4
-networkx==3.4.2
+# Lower bounds, not exact pins. Exact pins looked reproducible but broke on
+# any Python newer than the one they were chosen for: pydantic==2.10.4 has no
+# wheel for Python 3.14, so pip fell back to compiling pydantic-core from Rust
+# source and failed on a machine with no toolchain. Minimum versions let pip
+# pick a build that matches whatever Python the user has.
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.10
+networkx>=3.4
