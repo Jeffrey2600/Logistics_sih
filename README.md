@@ -10,9 +10,16 @@ Eastern states, with monsoon disruption risk priced into every segment.
 
 ```bash
 git clone <this-repo> && cd Logistics_sih
-pip install -r backend/requirements.txt
-./run.sh                       # Windows: .\run.ps1
+./run.sh                       # installs what it needs on first run
 ```
+
+On Windows, open **Command Prompt** and run `run.bat`. Use cmd rather than
+PowerShell: PowerShell refuses to run an unsigned `.ps1` by default, and
+`run.ps1` is there for anyone who would rather set an execution policy than
+open a different window.
+
+If anything goes wrong, **[docs/RUNNING.md](docs/RUNNING.md)** lists every
+error people have actually hit, and what each one means.
 
 Then open **http://localhost:8000**.
 
