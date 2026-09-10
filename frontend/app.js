@@ -567,7 +567,18 @@ function setupVoice(combo) {
       combo.input.value = alternatives[0] || "";
       renderComboList(combo, combo.input.value);
     };
-    recogniser.onerror = () => { combo.input.value = ""; };
+    // Blanking the box on a failure looked like the app had eaten the choice.
+    // Put back what was committed, and say why nothing happened - a denied
+    // microphone permission is the common case and is invisible otherwise.
+    recogniser.onerror = (event) => {
+      if (combo.selected) combo.input.value = comboLabel(combo.selected);
+      const reason = event && event.error;
+      combo.list.hidden = false;
+      combo.list.innerHTML =
+        `<li class="empty">${esc(reason === "not-allowed" || reason === "service-not-allowed"
+          ? t("ui.voiceDenied") : t("ui.voiceFailed"))}</li>`;
+      setTimeout(() => closeCombo(combo), 3500);
+    };
     recogniser.onend = () => {
       combo.recogniser = null;
       combo.mic.classList.remove("listening");
