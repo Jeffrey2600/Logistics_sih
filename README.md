@@ -303,3 +303,49 @@ data/ingest/
 ml/landslide/          model training
 tests/                 248 tests
 ```
+
+## Dashboard features added for the field
+
+Three things a person actually using this on a phone or a district desk needs,
+none of which cost a rupee or an API key:
+
+**A satellite base map.** A `Map` / `Satellite` switch in the top-left corner of
+the map. "Map" is the light vector style the risk palette was validated
+against; "Satellite" is Esri World Imagery with Esri's own reference layer on
+top for place names, because imagery without labels is pretty and useless for
+picking a town. Switching styles drops MapLibre's sources, so every data layer
+is rebuilt from cache on the next `styledata` — `tests/browser/check.js`
+asserts the route, segment and place layers all survive the swap in both
+directions. Neither base map needs a key. See `docs/NETWORK_ACCESS.md` for why
+they render blank inside the development sandbox.
+
+**A searchable place picker, with voice input.** The origin and destination were
+`<select>` elements holding 5,594 options, which is not a control anyone can
+use: the list is unscrollable and the browser's own type-ahead only matches
+from the first letter. They are now search boxes that filter as you type,
+rank names that *start* with the query above ones that merely contain it, fold
+accents so `Nawājisnagar` is found by typing `nawajis`, and fall back to
+matching the state name. The microphone uses the browser's built-in Web Speech
+API — no key, no server round trip. It tries every alternative the recogniser
+offers rather than only the top one, because a village name is not in any
+recogniser's vocabulary and the second guess is often the right one, and it
+commits automatically only on an unambiguous match. Firefox has no Web Speech
+API, so the button hides itself there rather than sitting inert.
+
+**Five languages.** English, Hindi, Assamese, Bengali and Nepali — between them
+most of the eight North Eastern states plus the link language. The picker sits
+beside the title and the choice survives a reload. Translations live in
+`frontend/i18n.js` as a plain table rather than going through a translation
+API: a paid key would break the "free tier, works offline" property the rest of
+the project depends on, and a demo that needs the network to render its own
+buttons is worse than one that does not translate at all. Generated results —
+the itinerary, the risk table, the legends — are re-rendered on a language
+change, not just the static chrome.
+
+Data is never translated. Place names, rupee figures and highway numbers read
+the same in every language, which is what anyone reading a freight plan
+expects.
+
+> The Assamese and Nepali strings should get a native-speaker pass before this
+> is shown to a judging panel. They are careful translations, not reviewed
+> ones, and a wrong word in a demo is worse than an English one.

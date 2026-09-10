@@ -11,122 +11,146 @@
 <body>
 <div id="sidebar">
   <header>
-    <h1>NER Logistics &amp; Accessibility Intelligence</h1>
-    <p>SIH26002 &middot; MDoNER &middot; multimodal routing with monsoon risk priced in</p>
+    <div class="header-row">
+      <h1 data-i18n="app.title">NER Logistics &amp; Accessibility Intelligence</h1>
+      <select id="langSelect" class="lang" data-i18n-title="ui.language" aria-label="Language"></select>
+    </div>
+    <p data-i18n="app.subtitle">SIH26002 &middot; MDoNER &middot; multimodal routing with monsoon risk priced in</p>
   </header>
   <nav>
-    <button data-tab="route" class="active">Plan a shipment</button>
-    <button data-tab="risk">Monsoon risk</button>
-    <button data-tab="access">Who is cut off</button>
-    <button data-tab="analysis">Analysis</button>
+    <button data-tab="route" class="active" data-i18n="tab.route">Plan a shipment</button>
+    <button data-tab="risk" data-i18n="tab.risk">Monsoon risk</button>
+    <button data-tab="access" data-i18n="tab.access">Who is cut off</button>
+    <button data-tab="analysis" data-i18n="tab.analysis">Analysis</button>
   </nav>
 
   <section class="panel" id="tab-route">
-    <p class="lede">Find the best way to move freight across the North East —
+    <p class="lede" data-i18n="route.lede">Find the best way to move freight across the North East —
       by road, rail, river or air — with monsoon disruption priced in.</p>
 
-    <label for="origin">Ship from</label>
-    <select id="origin"></select>
-    <label for="destination">Ship to</label>
-    <select id="destination"></select>
+    <label for="originSearch" data-i18n="route.from">Ship from</label>
+    <div class="combo" id="originCombo">
+      <input type="hidden" id="origin">
+      <input type="text" id="originSearch" class="combo-input" autocomplete="off"
+             role="combobox" aria-expanded="false" aria-autocomplete="list"
+             aria-controls="originList" data-i18n-placeholder="ui.search">
+      <button type="button" class="mic" id="originMic" data-i18n-title="ui.voice"
+              aria-label="Speak the place name">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M18 11a6 6 0 0 1-12 0M12 17v4M9 21h6"/></svg>
+      </button>
+      <ul class="combo-list" id="originList" role="listbox" hidden></ul>
+    </div>
 
-    <label for="month">When</label>
+    <label for="destinationSearch" data-i18n="route.to">Ship to</label>
+    <div class="combo" id="destinationCombo">
+      <input type="hidden" id="destination">
+      <input type="text" id="destinationSearch" class="combo-input" autocomplete="off"
+             role="combobox" aria-expanded="false" aria-autocomplete="list"
+             aria-controls="destinationList" data-i18n-placeholder="ui.search">
+      <button type="button" class="mic" id="destinationMic" data-i18n-title="ui.voice"
+              aria-label="Speak the place name">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M18 11a6 6 0 0 1-12 0M12 17v4M9 21h6"/></svg>
+      </button>
+      <ul class="combo-list" id="destinationList" role="listbox" hidden></ul>
+    </div>
+
+    <label for="month" data-i18n="route.when">When</label>
     <select id="month"></select>
-    <p class="hint">June–September is the monsoon. Routes and costs change a lot.</p>
+    <p class="hint" data-i18n="route.whenHint">June–September is the monsoon. Routes and costs change a lot.</p>
 
-    <label for="cargo">What are you shipping?</label>
+    <label for="cargo" data-i18n="route.cargo">What are you shipping?</label>
     <select id="cargo">
-      <option value="25">Bulk goods — cement, coal, timber (delay is cheap)</option>
-      <option value="150" selected>General cargo — packaged goods</option>
-      <option value="800">Perishables — ginger, pineapple, fish (spoils fast)</option>
-      <option value="3000">Urgent — medicines, relief supplies</option>
+      <option value="25" data-i18n="cargo.bulk">Bulk goods — cement, coal, timber (delay is cheap)</option>
+      <option value="150" selected data-i18n="cargo.general">General cargo — packaged goods</option>
+      <option value="800" data-i18n="cargo.perish">Perishables — ginger, pineapple, fish (spoils fast)</option>
+      <option value="3000" data-i18n="cargo.urgent">Urgent — medicines, relief supplies</option>
     </select>
-    <p class="hint">Sets how costly a day of delay is, which decides whether speed is worth paying for.</p>
+    <p class="hint" data-i18n="route.cargoHint">Sets how costly a day of delay is, which decides whether speed is worth paying for.</p>
 
-    <label for="priority">What matters most?</label>
+    <label for="priority" data-i18n="route.priority">What matters most?</label>
     <select id="priority">
-      <option value="balanced" selected>Balanced — sensible all round</option>
-      <option value="cheapest">Cheapest — lowest freight bill</option>
-      <option value="fastest">Fastest — shortest door-to-door time</option>
-      <option value="reliable">Most reliable — avoid roads likely to close</option>
+      <option value="balanced" selected data-i18n="prio.balanced">Balanced — sensible all round</option>
+      <option value="cheapest" data-i18n="prio.cheapest">Cheapest — lowest freight bill</option>
+      <option value="fastest" data-i18n="prio.fastest">Fastest — shortest door-to-door time</option>
+      <option value="reliable" data-i18n="prio.reliable">Most reliable — avoid roads likely to close</option>
     </select>
 
-    <label>How can it travel?</label>
+    <label data-i18n="route.modes">How can it travel?</label>
     <div class="chips" id="modeChips"></div>
-    <p class="hint">Tap to turn a mode off. Changing modes mid-journey costs time and money.</p>
+    <p class="hint" data-i18n="route.modesHint">Tap to turn a mode off. Changing modes mid-journey costs time and money.</p>
 
     <details id="advanced">
-      <summary>Advanced: tune the trade-off</summary>
+      <summary data-i18n="route.advanced">Advanced: tune the trade-off</summary>
       <div class="row">
-        <div><label for="wCost" style="margin-top:0">Cost <span id="wCostL">0.4</span></label>
+        <div><label for="wCost" style="margin-top:0"><span data-i18n="route.wCost">Cost</span> <span id="wCostL">0.4</span></label>
              <input type="range" id="wCost" min="0" max="1" step="0.05" value="0.4"></div>
-        <div><label for="wTime" style="margin-top:0">Time <span id="wTimeL">0.4</span></label>
+        <div><label for="wTime" style="margin-top:0"><span data-i18n="route.wTime">Time</span> <span id="wTimeL">0.4</span></label>
              <input type="range" id="wTime" min="0" max="1" step="0.05" value="0.4"></div>
       </div>
-      <label for="wRisk" style="margin-top:8px">Avoiding risk <span id="wRiskL">0.2</span></label>
+      <label for="wRisk" style="margin-top:8px"><span data-i18n="route.wRisk">Avoiding risk</span> <span id="wRiskL">0.2</span></label>
       <input type="range" id="wRisk" min="0" max="1" step="0.05" value="0.2">
-      <label for="vot" style="margin-top:8px">Cost of delay — ₹<span id="votLabel">150</span> per tonne per hour</label>
+      <label for="vot" style="margin-top:8px" id="votLine">Cost of delay — ₹<span id="votLabel">150</span> per tonne per hour</label>
       <input type="range" id="vot" min="0" max="3000" step="25" value="150">
     </details>
 
-    <button class="primary" id="planBtn">Find the best route</button>
+    <button class="primary" id="planBtn" data-i18n="route.plan">Find the best route</button>
     <div id="routeResult"></div>
   </section>
 
   <section class="panel" id="tab-risk" hidden>
-    <p class="lede">Which roads are likely to be blocked, and when. Landslides
+    <p class="lede" data-i18n="risk.lede">Which roads are likely to be blocked, and when. Landslides
       close hill highways for days; the Brahmaputra floods the valley floor for
       weeks. Both peak in the monsoon, on different roads.</p>
-    <label for="riskMonth">Month</label>
+    <label for="riskMonth" data-i18n="risk.month">Month</label>
     <select id="riskMonth"></select>
-    <p class="hint">Slide through the year to watch the network deteriorate and recover.</p>
-    <label for="hazard">Hazard</label>
+    <p class="hint" data-i18n="risk.monthHint">Slide through the year to watch the network deteriorate and recover.</p>
+    <label for="hazard" data-i18n="risk.hazard">Hazard</label>
     <select id="hazard">
-      <option value="probability" selected>Both — landslide and flood</option>
-      <option value="landslide">Landslides and washouts only</option>
-      <option value="flood">River flooding only</option>
+      <option value="probability" selected data-i18n="risk.hazBoth">Both — landslide and flood</option>
+      <option value="landslide" data-i18n="risk.hazLand">Landslides and washouts only</option>
+      <option value="flood" data-i18n="risk.hazFlood">River flooding only</option>
     </select>
-    <p class="hint">Landslides hit steep hill roads; floods hit the flat valley
+    <p class="hint" data-i18n="risk.hazHint">Landslides hit steep hill roads; floods hit the flat valley
       floor. They are different roads, so they are modelled separately.</p>
-    <label>Show</label>
+    <label data-i18n="risk.show">Show</label>
     <div class="chips" id="riskModeChips"></div>
-    <label for="minLength">Roads longer than <span id="minLengthL">5</span> km</label>
+    <label for="minLength" id="minLengthLine">Roads longer than <span id="minLengthL">5</span> km</label>
     <input type="range" id="minLength" min="0" max="25" step="1" value="5">
-    <p class="hint">The network has thousands of short link roads. Raise this to
+    <p class="hint" data-i18n="risk.minLenHint">The network has thousands of short link roads. Raise this to
       see only the corridors that carry freight between towns.</p>
     <div class="actions">
-      <button class="primary" id="riskApply">Apply to map</button>
-      <p class="applied" id="riskApplied" hidden>Map updated</p>
+      <button class="primary" id="riskApply" data-i18n="risk.apply">Apply to map</button>
+      <p class="applied" id="riskApplied" data-i18n="risk.applied" hidden>Map updated</p>
     </div>
     <div id="riskResult"></div>
   </section>
 
   <section class="panel" id="tab-access" hidden>
-    <p class="lede">Which villages are cut off from markets, cold storage and the
+    <p class="lede" data-i18n="access.lede">Which villages are cut off from markets, cold storage and the
       rest of India — measured in real travel hours, not map distance.</p>
-    <label for="accessMonth">Month</label>
+    <label for="accessMonth" data-i18n="access.month">Month</label>
     <select id="accessMonth"></select>
-    <label for="accessMetric">Colour the map by</label>
+    <label for="accessMetric" data-i18n="access.colourBy">Colour the map by</label>
     <select id="accessMetric">
-      <option value="accessibility_score">Overall connectedness (0 worst – 100 best)</option>
-      <option value="hours_to_market">Travel time to the nearest market</option>
-      <option value="hours_to_coldstore">Travel time to the nearest cold store</option>
-      <option value="hours_to_gateway">Travel time to Guwahati or Siliguri</option>
+      <option value="accessibility_score" data-i18n="access.metricScore">Overall connectedness (0 worst – 100 best)</option>
+      <option value="hours_to_market" data-i18n="access.metricMarket">Travel time to the nearest market</option>
+      <option value="hours_to_coldstore" data-i18n="access.metricCold">Travel time to the nearest cold store</option>
+      <option value="hours_to_gateway" data-i18n="access.metricGateway">Travel time to Guwahati or Siliguri</option>
     </select>
     <div class="actions">
-      <button class="primary" id="accessApply">Apply to map</button>
-      <p class="applied" id="accessApplied" hidden>Map updated</p>
+      <button class="primary" id="accessApply" data-i18n="access.apply">Apply to map</button>
+      <p class="applied" id="accessApplied" data-i18n="risk.applied" hidden>Map updated</p>
     </div>
     <div id="accessResult"></div>
   </section>
 
   <section class="panel" id="tab-analysis" hidden>
-    <p class="lede">Every sensible way to move this consignment, side by side —
+    <p class="lede" data-i18n="analysis.lede">Every sensible way to move this consignment, side by side —
       what each one costs, how long it takes, and which is worth choosing.</p>
-    <p class="hint">Uses the origin, destination and month set on
+    <p class="hint" id="analysisHint">Uses the origin, destination and month set on
       <b>Plan a shipment</b>.</p>
     <div class="actions">
-      <button class="primary" id="analysisRun">Analyse this lane</button>
+      <button class="primary" id="analysisRun" data-i18n="analysis.run">Analyse this lane</button>
     </div>
     <div id="analysisResult"></div>
   </section>
@@ -135,10 +159,15 @@
 
 <div style="position:relative">
   <div id="map"></div>
+  <div class="basemap" id="basemapSwitch">
+    <button type="button" data-basemap="map" class="on" data-i18n="ui.map">Map</button>
+    <button type="button" data-basemap="satellite" data-i18n="ui.satellite">Satellite</button>
+  </div>
   <div class="legend" id="legend"></div>
 </div>
 
 <script src="vendor/maplibre-gl.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

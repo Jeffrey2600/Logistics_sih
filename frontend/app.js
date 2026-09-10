@@ -21,7 +21,7 @@ const MODE_COLOUR = { road: "#4da3ff", rail: "#a371f7", water: "#2dd4bf", air: "
 // exists to separate. Line width carries the same signal as a second channel,
 // so the map never depends on hue alone.
 const RISK_COLOUR = { low: "#1baf7a", elevated: "#eda100", severe: "#d03b3b" };
-const RISK_LABEL = { low: "Usually open", elevated: "Often disrupted", severe: "Frequently blocked" };
+// Band names now come from the translation table: see "band.*" in i18n.js.
 // The server bands the combined figure; the map may be showing one hazard.
 const bandOf = (p) => (p < 0.15 ? "low" : p < 0.35 ? "elevated" : "severe");
 
@@ -99,7 +99,56 @@ const BLANK_STYLE = {
   layers: [{ id: "bg", type: "background", paint: { "background-color": "#eaeef1" } }],
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
 };
-const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+// Two base maps, both optional enhancements over BLANK_STYLE.
+//
+// "Map" is the light vector style the risk palette was validated against.
+// "Satellite" is Esri's World Imagery, which is what people mean when they ask
+// for something that looks like Google Maps. Imagery on its own is pretty and
+// useless for choosing a town, so it carries Esri's reference layer on top for
+// place names and boundaries. Neither needs an API key.
+const BASEMAPS = {
+  map: {
+    label: "ui.map",
+    style: "https://tiles.openfreemap.org/styles/positron",
+    probe: "https://tiles.openfreemap.org/styles/positron",
+    dark: false,
+  },
+  satellite: {
+    label: "ui.satellite",
+    imagery: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    reference: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    probe: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/45",
+    attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics",
+    dark: true,
+  },
+};
+let basemapKind = "map";
+
+// Built locally rather than fetched: a raster style is four lines of JSON, and
+// not fetching it is one less thing that can fail on a blocked network.
+function satelliteStyle() {
+  const sat = BASEMAPS.satellite;
+  return {
+    version: 8,
+    sources: {
+      "sat-imagery": {
+        type: "raster", tiles: [sat.imagery], tileSize: 256, maxzoom: 19,
+        attribution: sat.attribution,
+      },
+      "sat-reference": {
+        type: "raster", tiles: [sat.reference], tileSize: 256, maxzoom: 19,
+      },
+    },
+    layers: [
+      // Deep water blue rather than black: while imagery tiles are still
+      // loading the gaps read as sea, not as a broken page.
+      { id: "bg", type: "background", paint: { "background-color": "#0d1b2a" } },
+      { id: "sat-imagery", type: "raster", source: "sat-imagery" },
+      { id: "sat-reference", type: "raster", source: "sat-reference" },
+    ],
+    glyphs: BLANK_STYLE.glyphs,
+  };
+}
 
 const map = new maplibregl.Map({
   container: "map",
@@ -114,16 +163,69 @@ let mapReady = false;
 const pending = [];
 function onMap(fn) { mapReady ? fn() : pending.push(fn); }
 
-// Try to upgrade to the real basemap; keep the blank one if it is unreachable.
-fetch(BASEMAP_STYLE, { mode: "cors" })
-  .then((r) => (r.ok ? r.json() : Promise.reject(new Error("basemap unavailable"))))
-  .then((style) => {
-    basemapLoaded = true;
-    map.setStyle(style);
-    // setStyle drops our sources and layers, so rebuild them from the cache.
-    map.once("styledata", addDataLayers);
-  })
-  .catch(() => { /* blank basemap: our own layers still render */ });
+// Switching the base map replaces the whole style, which drops our sources and
+// layers with it, so they are rebuilt from the cache on the next styledata.
+function applyBasemapStyle(kind) {
+  const done = () => { basemapLoaded = true; addDataLayers(); };
+  if (kind === "satellite") {
+    map.setStyle(satelliteStyle());
+    map.once("styledata", done);
+    return Promise.resolve(true);
+  }
+  return fetch(BASEMAPS.map.style, { mode: "cors" })
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("basemap unavailable"))))
+    .then((style) => { map.setStyle(style); map.once("styledata", done); return true; })
+    .catch(() => false);   // blank ground: our own layers still render
+}
+
+function setBasemap(kind) {
+  if (!BASEMAPS[kind] || kind === basemapKind) return;
+  basemapKind = kind;
+  // The class drives the few bits of chrome that have to change over imagery -
+  // the legend needs an opaque ground once it is sitting on dark pixels.
+  document.body.classList.toggle("satellite", BASEMAPS[kind].dark);
+  document.querySelectorAll("#basemapSwitch button").forEach((b) => {
+    b.classList.toggle("on", b.dataset.basemap === kind);
+  });
+  applyBasemapStyle(kind);
+}
+
+// Probe each base map the same way the map itself will consume it.
+//
+// A vector style is fetched and parsed as JSON, so it genuinely needs CORS.
+// Raster tiles are loaded as images, which do not - probing those with fetch()
+// would report a host unreachable whenever it merely declines a cross-origin
+// read, and would hide a base map that works perfectly.
+function reachable(config) {
+  if (config.style) {
+    return fetch(config.probe, { mode: "cors" }).then((r) => r.ok).catch(() => false);
+  }
+  return new Promise((resolve) => {
+    const image = new Image();
+    const timer = setTimeout(() => resolve(false), 8000);
+    const settle = (ok) => { clearTimeout(timer); resolve(ok); };
+    image.onload = () => settle(true);
+    image.onerror = () => settle(false);
+    image.src = config.probe;
+  });
+}
+
+// Disable the base maps this network cannot reach, rather than leaving a
+// button that silently does nothing when clicked.
+function probeBasemaps() {
+  Object.entries(BASEMAPS).forEach(([kind, config]) => {
+    if (kind === basemapKind) return;
+    reachable(config).then((ok) => {
+      if (ok) return;
+      const button = document.querySelector(`#basemapSwitch button[data-basemap="${kind}"]`);
+      if (!button) return;
+      button.disabled = true;
+      button.title = "This base map is not reachable from this network";
+    });
+  });
+}
+
+applyBasemapStyle("map");
 
 // Place names are drawn as SDF glyphs, which must be fetched from the tile
 // host. If that host is unreachable the glyph request fails and takes the
@@ -146,8 +248,21 @@ function addPlaceLabels() {
       "text-allow-overlap": false,
       "text-padding": 4,
     },
-    paint: { "text-color": "#3a4652", "text-halo-color": "#ffffff", "text-halo-width": 1.4 },
+    paint: {
+      "text-color": "#3a4652", "text-halo-color": "#ffffff", "text-halo-width": 1.4,
+    },
   });
+  paintPlaceLabels();
+}
+
+// Dark-on-light labels vanish over satellite imagery, so the pair is flipped
+// with the base map rather than being fixed to the light style.
+function paintPlaceLabels() {
+  if (!map.getLayer("places-label")) return;
+  const dark = BASEMAPS[basemapKind] && BASEMAPS[basemapKind].dark;
+  map.setPaintProperty("places-label", "text-color", dark ? "#ffffff" : "#3a4652");
+  map.setPaintProperty("places-label", "text-halo-color", dark ? "#11202e" : "#ffffff");
+  map.setPaintProperty("places-label", "text-halo-width", dark ? 1.6 : 1.4);
 }
 
 const EMPTY = { type: "FeatureCollection", features: [] };
@@ -266,6 +381,202 @@ function fillSelect(select, options, selected) {
     .join("");
 }
 
+/* ------------------------------------------------- place picker (search) --
+ * A <select> with 5,594 options is not a control anyone can use: the list is
+ * unscrollable and the browser's own type-ahead only matches from the first
+ * letter, so "Guwahati" cannot be found by typing "guw" if the cursor has
+ * moved on. This replaces it with a filtered list, and keeps a hidden input of
+ * the same id so `$("origin").value` and its change event mean what they did
+ * before.
+ */
+const combos = {};
+// A test seam. The picker is a search box now, so a test that wants a specific
+// place has to know its name; this is the only way to get from an id to one
+// without duplicating the place list in the test file.
+window.__combos = combos;
+
+function normalise(text) {
+  // Fold accents so "Nawājisnagar" is found by typing "nawajis". OSM names in
+  // the region carry diacritics that nobody types.
+  return String(text).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function markMatch(label, query) {
+  if (!query) return esc(label);
+  const at = normalise(label).indexOf(normalise(query));
+  if (at < 0) return esc(label);
+  return esc(label.slice(0, at)) + "<mark>" + esc(label.slice(at, at + query.length)) +
+         "</mark>" + esc(label.slice(at + query.length));
+}
+
+const COMBO_LIMIT = 40;
+
+function comboMatches(combo, query) {
+  const q = normalise(query).trim();
+  if (!q) return combo.options.slice(0, COMBO_LIMIT);
+  // Rank by where the match lands: a name that starts with what was typed is
+  // what the reader meant far more often than one that merely contains it.
+  const starts = [], contains = [], byState = [];
+  for (const option of combo.options) {
+    const name = normalise(option.name);
+    if (name.startsWith(q)) starts.push(option);
+    else if (name.includes(q)) contains.push(option);
+    else if (normalise(option.state || "").includes(q)) byState.push(option);
+  }
+  return starts.concat(contains, byState);
+}
+
+function renderComboList(combo, query) {
+  const matches = comboMatches(combo, query);
+  const shown = matches.slice(0, COMBO_LIMIT);
+  combo.matches = shown;
+  combo.active = shown.length ? 0 : -1;
+  if (!shown.length) {
+    combo.list.innerHTML = `<li class="empty">${esc(t("ui.noMatch"))}</li>`;
+  } else {
+    combo.list.innerHTML = shown.map((option, index) =>
+      `<li role="option" data-index="${index}" class="${index === 0 ? "active" : ""}">` +
+      markMatch(option.name, query.trim()) +
+      (option.state ? ` <span class="state">${esc(option.state)}</span>` : "") +
+      "</li>").join("") +
+      (matches.length > shown.length
+        ? `<li class="more">${esc(t("ui.more", { n: matches.length - shown.length }))}</li>`
+        : "");
+  }
+  combo.list.hidden = false;
+  combo.input.setAttribute("aria-expanded", "true");
+}
+
+function closeCombo(combo) {
+  combo.list.hidden = true;
+  combo.input.setAttribute("aria-expanded", "false");
+}
+
+function comboLabel(option) {
+  return option.state ? `${option.name} — ${option.state}` : option.name;
+}
+
+function selectComboOption(combo, option, { silent } = {}) {
+  if (!option) return;
+  combo.selected = option;
+  combo.hidden.value = option.id;
+  combo.input.value = comboLabel(option);
+  combo.input.classList.remove("unset");
+  closeCombo(combo);
+  if (!silent) combo.hidden.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function setupCombo(name, options, initialId) {
+  const combo = {
+    name,
+    options,
+    hidden: $(name),
+    input: $(name + "Search"),
+    list: $(name + "List"),
+    mic: $(name + "Mic"),
+    matches: [],
+    active: -1,
+    selected: null,
+  };
+  combos[name] = combo;
+
+  combo.input.oninput = () => renderComboList(combo, combo.input.value);
+  combo.input.onfocus = () => {
+    // Focusing to change a choice means replacing it, so the whole current
+    // value is offered for overtyping rather than needing to be cleared.
+    combo.input.select();
+    renderComboList(combo, "");
+  };
+  combo.input.onkeydown = (event) => {
+    if (combo.list.hidden && (event.key === "ArrowDown" || event.key === "Enter")) {
+      renderComboList(combo, combo.input.value);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      if (!combo.matches.length) return;
+      combo.active = (combo.active + step + combo.matches.length) % combo.matches.length;
+      combo.list.querySelectorAll("li[data-index]").forEach((li) => {
+        li.classList.toggle("active", +li.dataset.index === combo.active);
+      });
+      const active = combo.list.querySelector("li.active");
+      if (active) active.scrollIntoView({ block: "nearest" });
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      selectComboOption(combo, combo.matches[combo.active]);
+    } else if (event.key === "Escape") {
+      closeCombo(combo);
+      // Escape restores the committed choice; leaving half-typed text in a box
+      // whose value is something else is how people ship the wrong lane.
+      if (combo.selected) combo.input.value = comboLabel(combo.selected);
+    }
+  };
+  combo.input.onblur = () => setTimeout(() => closeCombo(combo), 150);
+  combo.list.onmousedown = (event) => {
+    const item = event.target.closest("li[data-index]");
+    if (!item) return;
+    event.preventDefault();
+    selectComboOption(combo, combo.matches[+item.dataset.index]);
+  };
+
+  setupVoice(combo);
+
+  const initial = options.find((o) => o.id === initialId) || options[0];
+  selectComboOption(combo, initial, { silent: true });
+  return combo;
+}
+
+/* ------------------------------------------------------- voice input ----- */
+// The Web Speech API is built into the browser, so this costs nothing and
+// needs no key. Firefox does not implement it; there the button is hidden
+// rather than left in place to disappoint.
+const SpeechRecogniser = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function setupVoice(combo) {
+  if (!SpeechRecogniser) { combo.mic.hidden = true; return; }
+  combo.mic.onclick = () => {
+    if (combo.recogniser) { combo.recogniser.stop(); return; }
+    const recogniser = new SpeechRecogniser();
+    recogniser.lang = speechLocale();
+    recogniser.interimResults = false;
+    recogniser.maxAlternatives = 3;
+    combo.recogniser = recogniser;
+    combo.mic.classList.add("listening");
+    combo.input.placeholder = t("ui.listening");
+
+    recogniser.onresult = (event) => {
+      // Try every alternative the recogniser offers, best first: place names
+      // here are not in its vocabulary, so the top guess is often a common
+      // word and the second is the town.
+      const alternatives = [...event.results[0]].map((r) => r.transcript.trim());
+      for (const spoken of alternatives) {
+        const matches = comboMatches(combo, spoken);
+        if (matches.length) {
+          combo.input.value = spoken;
+          renderComboList(combo, spoken);
+          // Commit only on an unambiguous hit. Two candidates means the reader
+          // should choose, not us.
+          if (matches.length === 1 ||
+              normalise(matches[0].name) === normalise(spoken)) {
+            selectComboOption(combo, matches[0]);
+          }
+          return;
+        }
+      }
+      combo.input.value = alternatives[0] || "";
+      renderComboList(combo, combo.input.value);
+    };
+    recogniser.onerror = () => { combo.input.value = ""; };
+    recogniser.onend = () => {
+      combo.recogniser = null;
+      combo.mic.classList.remove("listening");
+      combo.input.placeholder = t("ui.search");
+    };
+    recogniser.start();
+  };
+}
+
 function chipRow(container, values, set, onChange) {
   container.innerHTML = "";
   for (const [value, label] of values) {
@@ -282,25 +593,85 @@ function chipRow(container, values, set, onChange) {
   }
 }
 
+function monthOptions() {
+  return MONTHS.map(([code]) =>
+    [code, code === "jul" ? `${t("month.jul")} ${t("month.peak")}` : t("month." + code)]);
+}
+
+function modeLabels() { return MODES.map((m) => [m, t("mode." + m)]); }
+
+// The three month pickers are separate controls that must survive a language
+// change without losing what the reader chose.
+function fillMonths() {
+  const options = monthOptions();
+  for (const id of ["month", "riskMonth", "accessMonth"]) {
+    const chosen = $(id).value || "jul";
+    fillSelect($(id), options, chosen);
+  }
+}
+
+/* --------------------------------------------------------- language ------ */
+// Labels that interleave text with a live value cannot be a single data-i18n
+// string. Each is rebuilt from its translation with the value spliced into the
+// placeholder's position, which differs between languages - in Hindi the rupee
+// figure lands in the middle of the phrase, in English near the front.
+function composeLabel(lineId, key, placeholder, valueHtml) {
+  const MARK = "\u0000";
+  const [before, after = ""] = t(key, { [placeholder]: MARK }).split(MARK);
+  $(lineId).innerHTML = esc(before) + valueHtml + esc(after);
+}
+
+function refreshComposedLabels() {
+  composeLabel("votLine", "route.vot", "v",
+               `<span id="votLabel">${esc($("vot").value)}</span>`);
+  composeLabel("minLengthLine", "risk.minLen", "n",
+               `<span id="minLengthL">${esc($("minLength").value)}</span>`);
+  composeLabel("analysisHint", "analysis.hint", "tab",
+               `<b>${esc(t("tab.route"))}</b>`);
+}
+
+function setupLanguagePicker() {
+  const select = $("langSelect");
+  select.innerHTML = LANGUAGES
+    .map(([code, label]) => `<option value="${code}">${esc(label)}</option>`).join("");
+  select.value = restoreLanguage();
+  applyTranslations();
+  refreshComposedLabels();
+
+  select.onchange = () => {
+    setLanguage(select.value);
+    refreshComposedLabels();
+    fillMonths();
+    chipRow($("modeChips"), modeLabels(), state.modes, planRoute);
+    chipRow($("riskModeChips"), modeLabels(), state.riskModes, drawRisk);
+    for (const combo of Object.values(combos)) {
+      combo.input.placeholder = t("ui.search");
+    }
+    // Results are generated HTML, so translating them means rendering them
+    // again. Only the visible panel is redrawn - the others rebuild when the
+    // reader opens them.
+    const active = document.querySelector("nav button.active");
+    if (active) active.onclick();
+  };
+}
+
 async function boot() {
   // Junctions outnumber settlements two to one and cannot be chosen
   // meaningfully - "n4021632273" is not somewhere anyone ships from.
   const { places } = await api("/network/places?settlements_only=true");
   places.forEach((p) => (state.places[p.id] = p));
   // Not every settlement carries a state; a bare "Name —" reads as a bug.
-  const options = places.map((p) => [p.id, p.state ? `${p.name} — ${p.state}` : p.name]);
+  const options = places.map((p) => ({ id: p.id, name: p.name, state: p.state || "" }));
 
-  fillSelect($("origin"), options, "KHM");
-  fillSelect($("destination"), options, "GAU");
-  for (const id of ["month", "riskMonth", "accessMonth"]) fillSelect($(id), MONTHS, "jul");
+  setupCombo("origin", options, "KHM");
+  setupCombo("destination", options, "GAU");
+  fillMonths();
 
-  const modeLabels = MODES.map((m) => [m, m[0].toUpperCase() + m.slice(1)]);
-  chipRow($("modeChips"), modeLabels, state.modes, planRoute);
-  chipRow($("riskModeChips"), modeLabels, state.riskModes, drawRisk);
-  // A chip per place was fine for 46 seed towns and is a wall of 5,000
-  // buttons once real settlements land. A filterable list scales.
+  chipRow($("modeChips"), modeLabels(), state.modes, planRoute);
+  chipRow($("riskModeChips"), modeLabels(), state.riskModes, drawRisk);
   applyPriority();
   applyCargo();
+  probeBasemaps();
 
   planRoute();
 }
@@ -327,9 +698,9 @@ function applyCargo() {
 
 async function planRoute() {
   const button = $("planBtn");
-  const label = button.dataset.label || (button.dataset.label = button.textContent);
+  const label = t("route.plan");
   button.disabled = true;
-  button.textContent = "Finding the best route…";
+  button.textContent = t("route.planning");
   try {
     const plan = await api("/routing/plan", {
       method: "POST",
@@ -400,10 +771,12 @@ function drawPlan(plan, highlightIndex = -1) {
 
   setSource("route", features);
   fitTo(coords);
-  legend("How the freight travels", MODES.map((m) => [MODE_COLOUR[m], {
-    road: "By road", rail: "By rail", water: "By river barge", air: "By air",
-  }[m]]).concat([["#9aa4ad", "Other options"]]),
-    "A change of colour is a transhipment: unloading and reloading costs time and money.");
+  legend(t("legend.route"),
+    MODES.map((m) => [MODE_COLOUR[m], t({
+      road: "legend.byRoad", rail: "legend.byRail",
+      water: "legend.byWater", air: "legend.byAir",
+    }[m])]).concat([["#9aa4ad", t("legend.other")]]),
+    t("legend.routeNote"));
 }
 
 function renderRoute(plan) {
@@ -413,38 +786,38 @@ function renderRoute(plan) {
   const legs = plan.recommended.legs.map((leg) => {
     if (leg.type === "transfer") {
       return `<div class="leg transfer">
-        <div class="where">Transhipment at ${esc(leg.at_name)}</div>
-        <div class="meta">${esc(leg.from_mode)} → ${esc(leg.to_mode)} · ${fmtH(leg.hours)} · ${fmtRs(leg.cost_per_tonne)}/t</div>
+        <div class="where">${esc(t("res.transhipment", { place: leg.at_name }))}</div>
+        <div class="meta">${esc(t("res.transhipmentCost", {
+          from: t("mode." + leg.from_mode), to: t("mode." + leg.to_mode),
+          hours: fmtH(leg.hours), cost: fmtRs(leg.cost_per_tonne) }))}</div>
       </div>`;
     }
     return `<div class="leg mode-${esc(leg.mode)}">
       <div class="where">${esc(leg.from_name)} → ${esc(leg.to_name)}</div>
-      <div class="meta">${esc(leg.mode)} · ${esc(leg.route_ref)} · ${leg.distance_km} km · ${fmtH(leg.hours)}
-        <span class="badge ${esc(leg.risk.band)}">${esc(leg.risk.band)}</span></div>
+      <div class="meta">${esc(t("mode." + leg.mode))} · ${esc(leg.route_ref)} · ${leg.distance_km} km · ${fmtH(leg.hours)}
+        <span class="badge ${esc(leg.risk.band)}">${esc(t("band." + leg.risk.band))}</span></div>
     </div>`;
   }).join("");
 
   const alternatives = plan.alternatives.map((alt, index) => {
     const a = alt.summary;
     return `<div class="alt" data-alt="${index}">
-      <strong>${esc(a.mode_chain.join(" → "))}</strong>
-      <div class="meta">${fmtH(a.total_hours)} · ${fmtRs(a.cost_per_tonne)}/t · ${a.transhipments} transhipment(s)</div>
+      <strong>${esc(a.mode_chain.map((m) => t("mode." + m)).join(" → "))}</strong>
+      <div class="meta">${fmtH(a.total_hours)} · ${fmtRs(a.cost_per_tonne)}/t · ${esc(t("res.changes", { n: a.transhipments }))}</div>
     </div>`;
   }).join("");
 
   $("routeResult").innerHTML = `
     <div class="stats">
-      <div class="stat"><b>${fmtH(s.total_hours)}</b><span>door to door</span></div>
-      <div class="stat"><b>${fmtRs(s.cost_per_tonne)}</b><span>freight per tonne</span></div>
-      <div class="stat"><b>${s.distance_km} km</b><span>distance travelled</span></div>
-      <div class="stat"><b>${fmtH(s.expected_delay_hours)}</b><span>likely delay</span></div>
+      <div class="stat"><b>${fmtH(s.total_hours)}</b><span>${esc(t("res.doorToDoor"))}</span></div>
+      <div class="stat"><b>${fmtRs(s.cost_per_tonne)}</b><span>${esc(t("res.freight"))}</span></div>
+      <div class="stat"><b>${s.distance_km} km</b><span>${esc(t("res.distance"))}</span></div>
+      <div class="stat"><b>${fmtH(s.expected_delay_hours)}</b><span>${esc(t("res.delay"))}</span></div>
     </div>
-    <h2>The journey</h2>${legs}
-    ${alternatives ? `<h2 style="margin-top:16px">Other ways to do it</h2>
-       <p class="hint">Click one to draw it on the map.</p>${alternatives}` : ""}
-    <p class="note">"Likely delay" is the time this shipment can expect to lose to
-       landslides and washouts in ${esc(plan.month)}, already included in the
-       door-to-door figure.</p>`;
+    <h2>${esc(t("res.journey"))}</h2>${legs}
+    ${alternatives ? `<h2 style="margin-top:16px">${esc(t("res.others"))}</h2>
+       <p class="hint">${esc(t("res.othersHint"))}</p>${alternatives}` : ""}
+    <p class="note">${esc(t("res.delayNote", { month: t("month." + plan.month) }))}</p>`;
 
   document.querySelectorAll(".alt").forEach((element) => {
     element.onclick = () => {
@@ -479,7 +852,7 @@ async function drawRisk() {
       widthScale: RISK_WIDTH[bandOf(riskOf(s))] ?? 1,
       popup: `<strong>${esc(s.label)}</strong><br>
               ${esc(s.mode)} · ${esc(s.route_ref)} · ${esc(s.terrain)} · ${s.distance_km} km<br>
-              <b>${esc(RISK_LABEL[bandOf(riskOf(s))])}</b> —
+              <b>${esc(t("band." + bandOf(riskOf(s))))}</b> —
               about a ${(riskOf(s) * 100).toFixed(0)}% chance of disruption this month<br>
               <span style="opacity:.75">landslide ${(s.risk.landslide * 100).toFixed(0)}%
               · flood ${(s.risk.flood * 100).toFixed(0)}%</span>`,
@@ -487,9 +860,9 @@ async function drawRisk() {
   })));
   setSource("places", []);
   legend(
-    "Chance of being blocked this month",
-    Object.entries(RISK_COLOUR).map(([band, colour]) => [colour, RISK_LABEL[band]]),
-    "Thicker lines are more likely to close, so the map still reads without colour.",
+    t("risk.legend"),
+    Object.keys(RISK_COLOUR).map((band) => [RISK_COLOUR[band], t("band." + band)]),
+    t("risk.legendNote"),
   );
   fitTo(shown.flatMap((s) => s.geometry));
 
@@ -499,7 +872,7 @@ async function drawRisk() {
     .sort((a, b) => riskOf(b) - riskOf(a))
     .slice(0, 12).map((s) => `<tr>
       <td>${esc(s.label)}</td>
-      <td>${esc(s.risk.dominant === "flood" ? "Flood" : "Landslide")}</td>
+      <td>${esc(s.risk.dominant === "flood" ? t("risk.flood") : t("risk.landslide"))}</td>
       <td><span class="badge ${esc(bandOf(riskOf(s)))}">${(riskOf(s) * 100).toFixed(0)}%</span></td>
     </tr>`).join("");
 
@@ -513,10 +886,12 @@ async function drawRisk() {
       + "probably higher than shown.";
 
   $("riskResult").innerHTML = `
-    <table><thead><tr><th>Road</th><th>Main hazard</th><th>Risk</th></tr></thead>
+    <table><thead><tr><th>${esc(t("risk.thRoad"))}</th><th>${esc(t("risk.thHazard"))}</th>
+    <th>${esc(t("risk.thRisk"))}</th></tr></thead>
     <tbody>${worst}</tbody></table>
-    <p class="note">Showing ${shown.length.toLocaleString("en-IN")} roads longer than
-       ${minKm} km${hidden > 0 ? `; ${hidden.toLocaleString("en-IN")} shorter links hidden` : ""}.</p>
+    <p class="note">${esc(t("risk.showing", {
+      shown: shown.length.toLocaleString("en-IN"), km: minKm,
+      hidden: hidden.toLocaleString("en-IN") }))}</p>
     <p class="note">${esc(historyNote)}</p>
     ${floodNote(data.flood_model)}`;
 }
@@ -565,10 +940,12 @@ async function drawAccessibility() {
   })));
   fitTo(data.places.map((p) => [p.lon, p.lat]));
   legend(
-    higherIsBetter ? "How well connected" : "Travel time",
-    [["rgb(27,175,122)", higherIsBetter ? "Well connected" : "A short trip"],
-     ["rgb(237,161,0)", higherIsBetter ? "Getting by" : "Half a day"],
-     ["rgb(208,59,59)", higherIsBetter ? "Cut off" : "A day or more"]],
+    higherIsBetter ? t("access.legend") : t("access.metric" + (
+      metric === "hours_to_market" ? "Market"
+        : metric === "hours_to_coldstore" ? "Cold" : "Gateway")),
+    [["rgb(27,175,122)", t("access.legendGood")],
+     ["rgb(237,161,0)", t("access.legendMid")],
+     ["rgb(208,59,59)", t("access.legendBad")]],
     higherIsBetter
       ? "Blends time to a market, cold store and the national gateway, plus how much worse the monsoon makes it."
       : "Real driving time over the road network, not distance on a map.",
@@ -580,13 +957,14 @@ async function drawAccessibility() {
     </tr>`).join("");
 
   $("accessResult").innerHTML = `
-    <h2 style="margin-top:16px">Worst connected places</h2>
-    <p class="hint">Click a row to fly there. Scored out of 100, where 100 is a
-       place with a market, cold storage and a gateway all close by.</p>
-    <table><thead><tr><th>Place</th><th>State</th><th>Score</th><th>To a market</th></tr></thead>
+    <h2 style="margin-top:16px">${esc(t("access.worst"))}</h2>
+    <p class="hint">${esc(t("access.worstHint"))}</p>
+    <table><thead><tr><th>${esc(t("access.thPlace"))}</th><th>${esc(t("access.thState"))}</th>
+    <th>${esc(t("access.thScore"))}</th><th>${esc(t("access.thMarket"))}</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <p class="note">Ranking ${data.settlements.toLocaleString("en-IN")} towns and villages.
-       ${data.unreachable ? data.unreachable.toLocaleString("en-IN") + " more have no road link at all and cannot be scored." : ""}</p>`;
+    <p class="note">${esc(t("access.ranking", {
+      n: data.settlements.toLocaleString("en-IN"),
+      orphans: (data.unreachable || 0).toLocaleString("en-IN") }))}</p>`;
 
   document.querySelectorAll("#accessResult tr.clickable").forEach((row) => {
     row.onclick = () => map.flyTo({ center: [+row.dataset.lon, +row.dataset.lat], zoom: 8.5 });
@@ -597,9 +975,9 @@ async function drawAccessibility() {
 
 async function runAnalysis() {
   const button = $("analysisRun");
-  const label = button.dataset.label || (button.dataset.label = button.textContent);
+  const label = t("analysis.run");
   button.disabled = true;
-  button.textContent = "Analysing…";
+  button.textContent = t("analysis.running");
   try {
     const data = await api(`/routing/compare?month=${$("month").value}`, {
       method: "POST",
@@ -684,10 +1062,12 @@ function renderAnalysis(data) {
 
   $("analysisResult").innerHTML = `
     <div class="verdict">${paragraphs.join("</p><p style='margin:10px 0 0'>")}</div>
-    <h2>Every option</h2>
+    <h2>${esc(t("analysis.every"))}</h2>
     <div style="overflow-x:auto">
       <table class="compare"><thead><tr>
-        <th>Option</th><th>Route</th><th>Time</th><th>Cost/t</th><th>Delay</th>
+        <th>${esc(t("analysis.thOption"))}</th><th>${esc(t("analysis.thRoute"))}</th>
+        <th>${esc(t("analysis.thTime"))}</th><th>${esc(t("analysis.thCost"))}</th>
+        <th>${esc(t("analysis.thDelay"))}</th>
       </tr></thead><tbody>${rows}</tbody></table>
     </div>
     ${missing.length ? `<h2 style="margin-top:16px">Not possible on this lane</h2>
@@ -722,6 +1102,9 @@ document.querySelectorAll("nav button").forEach((button) => {
 // worse than showing nothing.
 $("origin").onchange = planRoute;
 $("destination").onchange = planRoute;
+document.querySelectorAll("#basemapSwitch button").forEach((button) => {
+  button.onclick = () => setBasemap(button.dataset.basemap);
+});
 $("priority").onchange = () => { applyPriority(); planRoute(); };
 $("cargo").onchange = () => { applyCargo(); planRoute(); };
 $("month").onchange = planRoute;
@@ -743,9 +1126,9 @@ function flashApplied(id) {
 // for a person or a test - to know whether a click had been taken.
 async function applyWith(buttonId, noteId, draw) {
   const button = $(buttonId);
-  const label = button.dataset.label || (button.dataset.label = button.textContent);
+  const label = t(buttonId === "riskApply" ? "risk.apply" : "access.apply");
   button.disabled = true;
-  button.textContent = "Applying…";
+  button.textContent = t("risk.applying");
   $(noteId).hidden = true;
   try {
     await draw();
@@ -764,7 +1147,9 @@ $("accessApply").onclick = () =>
   applyWith("accessApply", "accessApplied", drawAccessibility);
 $("minLength").oninput = (e) => ($("minLengthL").textContent = e.target.value);
 $("riskMonth").onchange = () => applyWith("riskApply", "riskApplied", drawRisk);
-$("vot").oninput = (e) => ($("votLabel").textContent = "₹" + e.target.value);
+// The rupee sign belongs to the label, not the value: prefixing it here too
+// rendered "₹₹150" the moment anyone dragged the slider.
+$("vot").oninput = (e) => ($("votLabel").textContent = e.target.value);
 for (const key of ["Cost", "Time", "Risk"]) {
   $("w" + key).oninput = (e) => ($("w" + key + "L").textContent = (+e.target.value).toFixed(2));
 }
@@ -779,6 +1164,8 @@ function fatal(message) {
     `reload with <b>Ctrl+Shift+R</b>.`;
   $("sidebar").insertBefore(banner, $("sidebar").children[2]);
 }
+
+setupLanguagePicker();
 
 boot().catch((error) => {
   // Empty dropdowns with no explanation is the worst possible failure mode:

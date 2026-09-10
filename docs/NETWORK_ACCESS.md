@@ -61,3 +61,34 @@ Rebuilding the network from a cached payload needs no network at all:
 - Any fetcher that cannot reach its source is expected to fail loudly rather
   than write a partial dataset. Derived data lives in `data/processed/` and is
   only written after a complete fetch.
+
+## Base map tile hosts
+
+The dashboard offers two base maps, both requested by the browser at runtime
+rather than by any fetcher:
+
+| Host | Used for | Key needed |
+|---|---|---|
+| `tiles.openfreemap.org` | the light "Map" vector style, and the label glyphs | no |
+| `server.arcgisonline.com` | the "Satellite" imagery and its place-name reference layer (Esri World Imagery) | no |
+
+Both answer a plain `curl` from this environment with real content — a
+15 KB JPEG imagery tile and a 25 KB style JSON. **Neither renders inside the
+sandbox browser**: the agent proxy closes the tunnel mid-exchange
+(`ws_closed_mid_exchange`, code 1006) once a map opens dozens of parallel tile
+connections, so every screenshot taken here shows a blank base map. This is a
+property of the sandbox relay, not of the hosts and not of the application —
+it affected the pre-existing vector base map identically, long before the
+satellite option existed.
+
+What this means in practice:
+
+- On any ordinary machine, both base maps load. Nothing here needs a key or an
+  account.
+- Inside the sandbox, treat a blank base map as expected. What *can* be checked
+  here — and is, in `tests/browser/check.js` — is that the style swap registers
+  the right sources and that our own data layers survive it. The imagery
+  pixels themselves cannot be verified from this environment.
+- The application is built for this case anyway: `BLANK_STYLE` is a light
+  local ground with no network dependency, and every data layer draws on top of
+  it, so a blocked venue network costs the demo its backdrop and nothing else.

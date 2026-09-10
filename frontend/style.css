@@ -124,3 +124,57 @@ table.compare tr.winner td { background: #eef4fd; font-weight: 600; }
 .verdict b { color: var(--text); }
 
 @media (max-width: 900px) { body { grid-template-columns: 1fr; } #map { height: 55vh; } }
+
+/* ---- language picker ---------------------------------------------------- */
+.header-row { display: flex; align-items: center; gap: 10px; }
+.header-row h1 { flex: 1; min-width: 0; }
+select.lang { width: auto; flex: none; padding: 4px 6px; font-size: 11px;
+              background: var(--panel-2); color: var(--muted); }
+
+/* ---- searchable place picker with voice input --------------------------- */
+/* Replaces a 5,594-option <select>, which was unusable: nobody scrolls that
+   far, and the native type-ahead only matches from the first character. */
+.combo { position: relative; }
+.combo-input { width: 100%; background: var(--panel-2); color: var(--text);
+               border: 1px solid var(--line); border-radius: 6px;
+               padding: 8px 38px 8px 10px; font-family: inherit; font-size: 13px; }
+.combo-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.combo-input.unset { color: var(--muted); }
+.mic { position: absolute; right: 4px; top: 4px; width: 28px; height: 28px;
+       border: 0; border-radius: 5px; background: none; color: var(--muted);
+       cursor: pointer; display: flex; align-items: center; justify-content: center;
+       padding: 0; }
+.mic:hover { background: var(--line); color: var(--text); }
+.mic svg { width: 16px; height: 16px; fill: none; stroke: currentColor;
+           stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mic[hidden] { display: none; }
+/* Recording is a state a user must be able to see at a glance - a silent
+   microphone that is actually listening is the wrong kind of surprise. */
+.mic.listening { color: #fff; background: var(--severe); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.combo-list { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 3px);
+              margin: 0; padding: 4px; list-style: none; max-height: 260px;
+              overflow-y: auto; background: var(--panel); border: 1px solid var(--line);
+              border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.14); }
+.combo-list[hidden] { display: none; }
+.combo-list li { padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+.combo-list li .state { color: var(--muted); font-size: 11.5px; }
+.combo-list li.active, .combo-list li:hover { background: var(--panel-2); }
+.combo-list li.empty, .combo-list li.more { color: var(--muted); cursor: default;
+                                            font-size: 11.5px; }
+.combo-list li.empty:hover, .combo-list li.more:hover { background: none; }
+.combo-list mark { background: #fff3bf; color: inherit; border-radius: 2px; }
+
+/* ---- base map switch ---------------------------------------------------- */
+.basemap { position: absolute; top: 12px; left: 12px; z-index: 5; display: flex;
+           background: rgba(255,255,255,.96); border: 1px solid var(--line);
+           border-radius: 8px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.14); }
+.basemap button { border: 0; background: none; color: var(--muted); cursor: pointer;
+                  font: 600 11.5px/1 inherit; padding: 8px 14px; font-family: inherit; }
+.basemap button:hover { color: var(--text); }
+.basemap button.on { background: var(--accent); color: #fff; }
+.basemap button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* On imagery the legend sits over dark pixels, so it needs a solid ground
+   rather than the near-transparent one that works over the light basemap. */
+body.satellite .legend { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.35); }

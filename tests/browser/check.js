@@ -34,6 +34,22 @@ const check = (name, ok, detail) => results.push({ name, ok, detail });
   };
   const summary = async () => (await p.textContent('#routeResult .stats')).replace(/\s+/g,' ').trim();
 
+  // The place pickers are no longer <select>s, so selectOption cannot drive
+  // them. Type into the search box and click the match, which is also the only
+  // path a real user has.
+  const pickPlace = async (which, id) => {
+    const label = await p.evaluate(([w, i]) => {
+      const combo = window.__combos && window.__combos[w];
+      const option = combo && combo.options.find(o => o.id === i);
+      return option ? option.name : null;
+    }, [which, id]);
+    if (!label) throw new Error(`no place ${id} in ${which}`);
+    await p.click(`#${which}Search`);
+    await p.fill(`#${which}Search`, label);
+    await p.waitForSelector(`#${which}List li[data-index]`, { timeout: 15000 });
+    await p.click(`#${which}List li[data-index="0"]`);
+  };
+
   const panel = await p.evaluate(() => {
     const el = document.getElementById('sidebar');
     return { bg: getComputedStyle(el).backgroundColor, width: el.offsetWidth };
@@ -45,7 +61,7 @@ const check = (name, ok, detail) => results.push({ name, ok, detail });
   check('Analysis tab present', tabs.includes('analysis'), tabs.join(','));
   check('road-closure control removed', (await p.$('#closure')) === null);
 
-  await p.selectOption('#origin', 'KHM'); await p.selectOption('#destination', 'GAU');
+  await pickPlace('origin', 'KHM'); await pickPlace('destination', 'GAU');
   await p.click('#planBtn'); await idle('#planBtn');
   await p.selectOption('#priority','cheapest'); await idle('#planBtn');
   const cheap = await summary();
@@ -111,18 +127,18 @@ const check = (name, ok, detail) => results.push({ name, ok, detail });
   // Back to the planning tab: the checks below drive controls that live there,
   // and a hidden control cannot be operated.
   await p.click('nav button[data-tab="route"]');
-  await p.waitForSelector('#origin:visible', { timeout: 60000 });
+  await p.waitForSelector('#originSearch:visible', { timeout: 60000 });
   await idle('#planBtn');
 
   const sum = summary;
-  await p.selectOption('#origin','KHM'); await p.selectOption('#destination','GAU');
+  await pickPlace('origin', 'KHM'); await pickPlace('destination', 'GAU');
   await p.click('#planBtn'); await idle('#planBtn');
 
   // 1. Ship from / Ship to actually drive the plan.
   const a = await sum();
-  await p.selectOption('#origin','IMP'); await idle('#planBtn');
+  await pickPlace('origin', 'IMP'); await idle('#planBtn');
   check('Ship from changes the plan', (await sum()) !== a, await sum());
-  await p.selectOption('#origin','KHM'); await idle('#planBtn');
+  await pickPlace('origin', 'KHM'); await idle('#planBtn');
   const legFrom = await p.$eval('#routeResult .leg .where', e => e.textContent);
   check('itinerary starts at the chosen origin', /Kohima/.test(legFrom), legFrom);
 
@@ -159,13 +175,13 @@ const check = (name, ok, detail) => results.push({ name, ok, detail });
   await p.click('#planBtn'); await idle('#planBtn');
 
   // 5. A lane with no route reports rather than breaking.
-  await p.selectOption('#origin','GTK');
+  await pickPlace('origin', 'GTK');
   for (const c of chips) { const t = (await c.textContent()).trim();
     if (t !== 'Water') continue; }
   await p.click('#planBtn'); await idle('#planBtn');
   check('an impossible request is reported, not silent',
         (await p.textContent('#routeResult')).length > 0, 'handled');
-  await p.selectOption('#origin','KHM'); await p.click('#planBtn'); await idle('#planBtn');
+  await pickPlace('origin', 'KHM'); await p.click('#planBtn'); await idle('#planBtn');
 
   // 6. Risk: mode chips filter the map.
   await p.click('nav button[data-tab="risk"]');
@@ -206,6 +222,122 @@ const check = (name, ok, detail) => results.push({ name, ok, detail });
   check('clicking a place flies the map to it',
         Math.abs(await p.evaluate(() => map.getCenter().lat) - beforeCentre) > 0.01, 'moved');
 
+
+  // 10. Place search: typing filters, and picking drives the plan.
+  await p.click('nav button[data-tab="route"]');
+  await idle('#planBtn');
+  await p.click('#originSearch');
+  await p.fill('#originSearch', 'guwa');
+  await p.waitForSelector('#originList li[data-index]', { timeout: 15000 });
+  const guwa = await p.$$eval('#originList li[data-index]',
+    els => els.map(e => e.textContent.trim()));
+  check('place search filters as you type',
+        guwa.length > 0 && guwa.every(x => /guwa/i.test(x)), guwa.slice(0, 2).join(' | '));
+
+  // Accents must not have to be typed: OSM carries them, keyboards do not.
+  await p.fill('#originSearch', 'nawajis');
+  await p.waitForTimeout(300);
+  const folded = await p.$$eval('#originList li[data-index]', els => els.length);
+  check('search ignores accents', folded > 0, `${folded} match(es) for "nawajis"`);
+
+  await p.fill('#originSearch', 'kohima');
+  await p.waitForSelector('#originList li[data-index]', { timeout: 15000 });
+  await p.click('#originList li[data-index="0"]');
+  await idle('#planBtn');
+  check('picking from the search re-plans the route',
+        /Kohima/.test(await p.textContent('#routeResult')),
+        (await p.inputValue('#origin')));
+
+  // Escape restores the committed choice rather than leaving a half-typed box.
+  await p.fill('#originSearch', 'zzz nonsense');
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(200);
+  check('escape restores the chosen place',
+        /Kohima/.test(await p.inputValue('#originSearch')),
+        await p.inputValue('#originSearch'));
+
+  // The rupee sign lives in the label; the slider must not add a second one.
+  await p.click('#advanced summary');
+  await p.$eval('#vot', el => {
+    el.value = 500;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await p.waitForTimeout(200);
+  const votText = (await p.textContent('#votLine')).replace(/\s+/g, ' ').trim();
+  check('cost-of-delay label shows one rupee sign', !/₹\s*₹/.test(votText), votText);
+
+  // 11. Voice input degrades rather than lying about being available.
+  const voice = await p.evaluate(() => ({
+    supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+    hidden: document.getElementById('originMic').hidden,
+  }));
+  check('voice button matches browser support', voice.supported !== voice.hidden,
+        `supported=${voice.supported} hidden=${voice.hidden}`);
+
+  // 12. Satellite base map: real raster sources, and our layers survive it.
+  //
+  // The imagery host is unreachable from some networks - the CI sandbox among
+  // them - and the app disables the button when its probe fails. That is the
+  // behaviour we want, so assert it, then drive the switch directly so the
+  // style-swap logic is still covered wherever this runs.
+  const satButton = await p.evaluate(() => {
+    const button = document.querySelector('#basemapSwitch button[data-basemap="satellite"]');
+    return { disabled: button.disabled, title: button.title };
+  });
+  check('an unreachable base map is disabled with a reason, not left inert',
+        !satButton.disabled || /not reachable/i.test(satButton.title),
+        `disabled=${satButton.disabled} title="${satButton.title}"`);
+
+  if (satButton.disabled) {
+    await p.evaluate(() => setBasemap('satellite'));
+  } else {
+    await p.click('#basemapSwitch button[data-basemap="satellite"]');
+  }
+  await p.waitForTimeout(3000);
+  const sat = await p.evaluate(() => ({
+    sources: Object.keys(map.getStyle().sources),
+    route: !!map.getLayer('route-line'),
+    segments: !!map.getLayer('segments-line'),
+    places: !!map.getLayer('places-circle'),
+    body: document.body.classList.contains('satellite'),
+  }));
+  check('satellite adds imagery and reference layers',
+        sat.sources.includes('sat-imagery') && sat.sources.includes('sat-reference'),
+        sat.sources.join(','));
+  check('data layers survive the base map switch',
+        sat.route && sat.segments && sat.places && sat.body, JSON.stringify(sat));
+
+  await p.evaluate(() => setBasemap('map'));
+  await p.waitForTimeout(3000);
+  check('switching back restores the vector base map',
+        await p.evaluate(() => !document.body.classList.contains('satellite')
+                            && !!map.getLayer('route-line')), 'restored');
+
+  // 13. Language: the UI translates, and the choice survives a reload.
+  const englishTab = await p.textContent('nav button[data-tab="route"]');
+  await p.selectOption('#langSelect', 'hi');
+  await p.waitForTimeout(600);
+  const hindiTab = await p.textContent('nav button[data-tab="route"]');
+  check('language switch translates the tabs', hindiTab !== englishTab && /[ऀ-ॿ]/.test(hindiTab),
+        `${englishTab} -> ${hindiTab}`);
+  check('language switch translates the month list',
+        /[ऀ-ॿ]/.test(await p.$eval('#month option[value="jul"]', e => e.textContent)),
+        await p.$eval('#month option[value="jul"]', e => e.textContent));
+  await idle('#planBtn');
+  check('language switch translates generated results',
+        /[ऀ-ॿ]/.test(await p.textContent('#routeResult .stats')),
+        (await p.textContent('#routeResult .stats')).replace(/\s+/g, ' ').slice(0, 50));
+
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('#routeResult .stat b', { timeout: 120000 });
+  check('language choice survives a reload',
+        /[ऀ-ॿ]/.test(await p.textContent('nav button[data-tab="route"]')),
+        await p.textContent('nav button[data-tab="route"]'));
+  await p.selectOption('#langSelect', 'en');
+  await p.waitForTimeout(400);
+  check('switching back to English restores it',
+        (await p.textContent('nav button[data-tab="route"]')).trim() === 'Plan a shipment',
+        await p.textContent('nav button[data-tab="route"]'));
 
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {

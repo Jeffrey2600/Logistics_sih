@@ -193,6 +193,9 @@ def test_every_planning_control_triggers_a_replan():
         assert re.search(rf'\$\("{control}"\)\.onchange', app_js), (
             f"#{control} does not re-plan when changed"
         )
-    assert re.search(r'chipRow\(\$\("modeChips"\)[^)]*planRoute\)', app_js), (
+    # Bounded by the statement, not by the next ")": the label argument is a
+    # call now, and a paren-excluding pattern stopped dead at its closing
+    # bracket and reported a re-plan that was there all along.
+    assert re.search(r'chipRow\(\$\("modeChips"\)[^;]*planRoute\)', app_js), (
         "the mode chips do not re-plan when toggled"
     )
