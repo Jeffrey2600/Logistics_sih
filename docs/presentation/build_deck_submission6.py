@@ -283,17 +283,20 @@ for i, t in enumerate([
         "first."]):
     line(tf, t, 12.5, color=INK, first=(i == 0), after=9, bullet=True, spacing=1.18)
 
-y = 4.68
+y = 4.60
 pointer_head(s, LX, y, LW, 3, "Innovation and uniqueness of the solution")
-tf = tf_at(s, LX + 0.52, y + 0.42, LW - 0.52, 1.15)
+tf = tf_at(s, LX + 0.52, y + 0.40, LW - 0.52, 1.75)
 for i, t in enumerate([
         "Most tools say a road might be blocked this month and stop there. "
         "We also work out the chance a specific trip gets caught in it, so "
         "a hill route shows up as costly, not impossible.",
         "Landslides and floods are scored separately, since they happen on "
         "different terrain in different seasons - and the whole thing runs "
-        "on free data, so there is no cost to keep it running."]):
-    line(tf, t, 12.5, color=INK, first=(i == 0), after=9, bullet=True, spacing=1.18)
+        "on free data, so there is no cost to keep it running.",
+        "Built for the field, not just for a lab demo: search a place by "
+        "voice, switch to satellite view, watch the shipment move leg by "
+        "leg on the map, and use the whole app in five languages."]):
+    line(tf, t, 12, color=INK, first=(i == 0), after=7, bullet=True, spacing=1.14)
 
 # hero visual: the whole network, risk-coloured, straight from the app
 RX, RW = 8.30, 4.48
@@ -328,21 +331,22 @@ used_h = pointer_head(s, 0.55, y, 12.23, 1,
                       "Technologies to be used",
                       "(e.g. programming languages, frameworks, hardware)")
 groups = [
-    ("Backend", "Python  ·  FastAPI  ·  NetworkX  ·  scikit-learn (optional)"),
-    ("Data", "OpenStreetMap  ·  NASA POWER  ·  Copernicus DEM"),
-    ("Frontend", "MapLibre GL - vendored, zero build step"),
-    ("Testing", "pytest - 261 tests  ·  Playwright - 30 UI checks"),
+    ("Backend", "Python · FastAPI · NetworkX · scikit-learn (optional)"),
+    ("Data", "OpenStreetMap · NASA POWER · Copernicus DEM"),
+    ("Frontend", "MapLibre GL - vector + satellite, no build step"),
+    ("Interface", "Web Speech API (voice) · 5 languages · shipment tracking"),
+    ("Testing", "pytest - 261 tests · Playwright - 30+ UI checks"),
 ]
 gy = y + used_h + 0.08
-gw, gg = 2.93, 0.13
+gw, gg = 2.232, 0.13
 for i, (head, body) in enumerate(groups):
     x = 0.55 + i * (gw + gg)
-    rect(s, x, gy, gw, 0.74, PANEL, None)
-    tf = tf_at(s, x + 0.14, gy + 0.08, gw - 0.28, 0.60)
-    line(tf, head.upper(), 10, bold=True, color=BLUE, first=True, after=2)
-    line(tf, body, 10.5, color=INK, spacing=1.1)
+    rect(s, x, gy, gw, 0.82, PANEL, None)
+    tf = tf_at(s, x + 0.12, gy + 0.08, gw - 0.24, 0.68)
+    line(tf, head.upper(), 9.5, bold=True, color=BLUE, first=True, after=2)
+    line(tf, body, 9.5, color=INK, spacing=1.1)
 
-y2 = gy + 0.74 + 0.24
+y2 = gy + 0.82 + 0.20
 head2_h = pointer_head(s, 0.55, y2, 12.23, 2,
                        "Methodology and process for implementation",
                        "(Flow Charts / Images / working prototype)")
