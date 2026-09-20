@@ -356,3 +356,22 @@ expects.
 > The Assamese and Nepali strings should get a native-speaker pass before this
 > is shown to a judging panel. They are careful translations, not reviewed
 > ones, and a wrong word in a demo is worse than an English one.
+
+## Shipment tracking
+
+Once a route is planned, a **Track this shipment** button appears above the
+itinerary. It animates a mode icon (truck, train, ship or plane) along the
+chosen route, switching icon at every transhipment and pausing there briefly -
+the same pause the platform charges real time and money for elsewhere in the
+model.
+
+**This is a playback of the plan's own numbers, not a live GPS feed.** There is
+no fleet to poll, so the panel says exactly that. What it can honestly show,
+and does: a leg that takes longer in the plan also runs longer on screen -
+each leg's share of the animation is proportional to its share of the
+itinerary's real transit hours, not a fixed rate - so a slow hill road visibly
+crawls next to a fast rail stretch instead of both taking the same few seconds.
+
+Pause genuinely freezes in place (position and progress both hold exactly
+where they were) and resume continues from that same point - a fixed reset
+disguised as a pause was the first draft, and it read as a bug, not a feature.

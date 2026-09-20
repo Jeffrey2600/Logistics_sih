@@ -15,6 +15,15 @@ const MONTHS = [
 ];
 const MODES = ["road", "rail", "water", "air"];
 const MODE_COLOUR = { road: "#4da3ff", rail: "#a371f7", water: "#2dd4bf", air: "#f778ba" };
+
+// One stroke-only glyph per mode, matching the mic button's line-icon style
+// rather than emoji, which reads as decoration instead of as this product's UI.
+const MODE_ICON = {
+  road: '<svg viewBox="0 0 24 24"><path d="M3 16h1.5M3 16V9.5A1.5 1.5 0 0 1 4.5 8h9L17 12h2.5A1.5 1.5 0 0 1 21 13.5V16h-1.5"/><path d="M8.5 16h6"/><circle cx="7" cy="16.5" r="1.8"/><circle cx="17" cy="16.5" r="1.8"/></svg>',
+  rail: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="12" rx="2.5"/><path d="M5 11h14M9 4v7M15 4v7"/><path d="M7 19l-1.6 2.2M17 19l1.6 2.2"/><circle cx="8.5" cy="16" r=".3"/></svg>',
+  water: '<svg viewBox="0 0 24 24"><path d="M4 17c1.4 1 2.8 1 4.2 0s2.8-1 4.2 0 2.8 1 4.2 0 2.8-1 4.2 0"/><path d="M6 17l1-8h8l3 8"/><path d="M11 9V4h3l2 3"/></svg>',
+  air: '<svg viewBox="0 0 24 24"><path d="M10.5 13.5 3 12l2-2 7 1.2V6l3-3 1 .7-1 4.3 5 1.8v2L14 11l-1.3 5.3 2 1.5-.6 1L11 17l-2.2 2.2-1-.6 1.5-2z"/></svg>',
+};
 // Three risk bands with validated colours. Four warm bands failed the
 // colour-difference checks outright: "high" and "severe" were 2.3 apart for a
 // deutan reader and 8.2 for normal vision, on exactly the two bands a risk map
@@ -69,6 +78,7 @@ const state = {
   riskModes: new Set(MODES),
   candidates: new Set(["KHM", "TWG", "LGL"]),
   segments: [],
+  tracking: null,   // the active shipment-tracking animation, if any
 };
 
 const $ = (id) => document.getElementById(id);
@@ -729,6 +739,7 @@ async function planRoute() {
     renderRoute(plan);
   } catch (error) {
     $("routeResult").innerHTML = `<div class="error">${esc(error.message)}</div>`;
+    stopTracking();
     setSource("route", []);
   } finally {
     button.disabled = false;
@@ -790,9 +801,209 @@ function drawPlan(plan, highlightIndex = -1) {
     t("legend.routeNote"));
 }
 
+/* ------------------------------------------------------- shipment tracking
+ * A marker animates along the chosen itinerary. It is a playback of the
+ * plan's own legs, not a live position feed - there is no fleet to poll, and
+ * saying so plainly is worth more than a "live tracking" label that implies
+ * a GPS this project does not have. What it can honestly show, and does: the
+ * mode-by-mode journey, timed so a leg that takes longer in the plan also
+ * takes longer on screen, and a pause at every transhipment, because that is
+ * exactly the cost this whole project exists to make visible. */
+
+const TRACK_TOTAL_MS = 16000;      // one full run of the animation
+const TRACK_TRANSFER_MS = 900;     // dwell at a transhipment, fixed either way
+
+function buildTimeline(itinerary) {
+  // Travel legs become moving segments; transfer legs become a pause with no
+  // movement, positioned at the place the transfer happens.
+  const steps = [];
+  let travelHours = 0;
+  for (const leg of itinerary.legs) {
+    if (leg.type === "travel") travelHours += leg.hours;
+  }
+  for (const leg of itinerary.legs) {
+    if (leg.type === "travel") {
+      const share = travelHours > 0 ? leg.hours / travelHours : 1 / itinerary.legs.length;
+      steps.push({
+        kind: "move", mode: leg.mode,
+        from: [leg.from_lon, leg.from_lat], to: [leg.to_lon, leg.to_lat],
+        fromName: leg.from_name, toName: leg.to_name,
+        routeRef: leg.route_ref, hours: leg.hours,
+        ms: Math.max(350, share * TRACK_TOTAL_MS),
+      });
+    } else {
+      steps.push({
+        kind: "pause", mode: leg.from_mode, at: steps.length ? steps[steps.length - 1].to : null,
+        atName: leg.at_name, toMode: leg.to_mode, ms: TRACK_TRANSFER_MS,
+      });
+    }
+  }
+  return steps;
+}
+
+function lerp(a, b, f) { return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; }
+
+// Torn down completely: switching plans, tabs or languages removes the
+// marker rather than leaving an orphaned DOM node animating under a hidden
+// panel. Pausing (below) is a different, lighter operation on purpose - a
+// paused shipment keeps its position, a closed one does not exist any more.
+function stopTracking() {
+  const tr = state.tracking;
+  if (!tr) return;
+  cancelAnimationFrame(tr.raf);
+  if (tr.marker) tr.marker.remove();
+  state.tracking = null;
+}
+
+// Two thirds of an OSM network's nodes are unnamed junctions ("n569069335"),
+// which is a fine row among two hundred in a scrollable list and a distracting
+// one in a single line of live status text - so the tracking panel names the
+// road instead of the junction when the place itself has no name.
+const RAW_OSM_ID = /^[ns]\d+$/i;
+function trackPlace(name, routeRef) {
+  if (name && !RAW_OSM_ID.test(name)) return esc(name);
+  return routeRef ? esc(routeRef) : t("track.unnamed");
+}
+
+function trackStatusHTML(step) {
+  if (!step) return "";
+  if (step.kind === "pause") {
+    return `<span class="place">${esc(t("res.transhipment", { place: trackPlace(step.atName) }))}</span>
+      <div class="sub">${esc(t("mode." + step.mode))} → ${esc(t("mode." + step.toMode))}</div>`;
+  }
+  // Two unnamed junctions on the same highway both fall back to that
+  // highway's name, and "AH1 -> AH1" reads like a mistake rather than as the
+  // plain fact that this stretch has no named places on it.
+  const from = trackPlace(step.fromName, step.routeRef);
+  const to = trackPlace(step.toName, step.routeRef);
+  const place = from === to ? t("track.along", { road: from }) : `${from} → ${to}`;
+  return `<span class="place">${place}</span>
+    <div class="sub">${esc(t("mode." + step.mode))} · ${esc(step.routeRef || "")} · ${fmtH(step.hours)}</div>`;
+}
+
+// The frame loop is written to run from any (index, elapsedIntoStep) it is
+// given, so pausing and resuming reuses it rather than needing a second copy
+// that only fires when the animation was interrupted mid-leg.
+function runTrackingFrames(tr, movable) {
+  const totalMs = tr.timeline.reduce((sum, step) => sum + step.ms, 0);
+  const { el, marker } = tr;
+
+  const paint = (step, elapsedInStep) => {
+    $("trackStatus").innerHTML = trackStatusHTML(step);
+    const pct = Math.min(100, ((tr.elapsedBefore + elapsedInStep) / totalMs) * 100);
+    const bar = $("trackBar");
+    if (bar) bar.style.width = pct + "%";
+    el.style.color = MODE_COLOUR[step.mode] || "#1c5cab";
+    el.innerHTML = MODE_ICON[step.mode] || MODE_ICON.road;
+    el.classList.toggle("moving", step.kind === "move");
+  };
+
+  const frame = (now) => {
+    const step = tr.timeline[tr.index];
+    const elapsed = now - tr.stepStart;
+    if (step.kind === "move") {
+      marker.setLngLat(lerp(step.from, step.to, Math.min(1, elapsed / step.ms)));
+    }
+    paint(step, elapsed);
+
+    if (elapsed >= step.ms) {
+      tr.elapsedBefore += step.ms;
+      tr.index += 1;
+      tr.stepStart = now;
+      if (tr.index >= tr.timeline.length) {
+        marker.setLngLat(movable[movable.length - 1].to);
+        el.classList.remove("moving");
+        $("trackStatus").innerHTML =
+          `<span class="place">${esc(t("track.done", { place: movable[movable.length - 1].toName }))}</span>`;
+        if ($("trackBar")) $("trackBar").style.width = "100%";
+        const toggle = $("trackToggle");
+        if (toggle) toggle.textContent = t("track.replay");
+        tr.done = true;
+        return;
+      }
+    }
+    tr.raf = requestAnimationFrame(frame);
+  };
+  tr.raf = requestAnimationFrame(frame);
+}
+
+function startTracking(itinerary) {
+  stopTracking();
+  const timeline = buildTimeline(itinerary);
+  const movable = timeline.filter((step) => step.kind === "move");
+  if (!movable.length) return;
+
+  const el = document.createElement("div");
+  el.className = "tracker-marker moving";
+  el.innerHTML = MODE_ICON[movable[0].mode] || MODE_ICON.road;
+  el.style.color = MODE_COLOUR[movable[0].mode] || "#1c5cab";
+  const marker = new maplibregl.Marker({ element: el }).setLngLat(movable[0].from).addTo(map);
+
+  const tr = {
+    marker, el, timeline, raf: 0, done: false, paused: false,
+    index: 0, elapsedBefore: 0, stepStart: performance.now(),
+  };
+  state.tracking = tr;
+  runTrackingFrames(tr, movable);
+}
+
+// Genuinely pauses in place - the marker stays exactly where it is, rather
+// than the button silently meaning "stop and forget the position", which is
+// what a fixed-teardown pause would actually do.
+function pauseTracking() {
+  const tr = state.tracking;
+  if (!tr || tr.done || tr.paused) return;
+  cancelAnimationFrame(tr.raf);
+  tr.pausedAt = performance.now();
+  tr.paused = true;
+  tr.el.classList.remove("moving");
+}
+
+function resumeTracking() {
+  const tr = state.tracking;
+  if (!tr || !tr.paused) return;
+  const movable = tr.timeline.filter((step) => step.kind === "move");
+  // Shift stepStart forward by exactly the time spent paused, so the leg in
+  // progress resumes from where it was rather than jumping or rewinding.
+  tr.stepStart += performance.now() - tr.pausedAt;
+  tr.paused = false;
+  tr.el.classList.add("moving");
+  runTrackingFrames(tr, movable);
+}
+
+function trackPanelHTML() {
+  return `<div class="track-panel">
+    <div class="row2">
+      <button type="button" class="primary track-toggle" id="trackToggle">${esc(t("track.button"))}</button>
+      <div class="track-status" id="trackStatus"></div>
+    </div>
+    <div class="track-bar"><i id="trackBar"></i></div>
+    <p class="track-note">${esc(t("track.note"))}</p>
+  </div>`;
+}
+
+function wireTrackToggle(itinerary) {
+  const toggle = $("trackToggle");
+  if (!toggle) return;
+  toggle.onclick = () => {
+    const tr = state.tracking;
+    if (tr && !tr.done && !tr.paused) {
+      pauseTracking();
+      toggle.textContent = t("track.resume");
+    } else if (tr && tr.paused) {
+      resumeTracking();
+      toggle.textContent = t("track.pause");
+    } else {
+      startTracking(itinerary);
+      toggle.textContent = t("track.pause");
+    }
+  };
+}
+
 function renderRoute(plan) {
   const s = plan.recommended.summary;
   drawPlan(plan);
+  stopTracking();
 
   const legs = plan.recommended.legs.map((leg) => {
     if (leg.type === "transfer") {
@@ -825,15 +1036,21 @@ function renderRoute(plan) {
       <div class="stat"><b>${s.distance_km} km</b><span>${esc(t("res.distance"))}</span></div>
       <div class="stat"><b>${fmtH(s.expected_delay_hours)}</b><span>${esc(t("res.delay"))}</span></div>
     </div>
+    ${trackPanelHTML()}
     <h2>${esc(t("res.journey"))}</h2>${legs}
     ${alternatives ? `<h2 style="margin-top:16px">${esc(t("res.others"))}</h2>
        <p class="hint">${esc(t("res.othersHint"))}</p>${alternatives}` : ""}
     <p class="note">${esc(t("res.delayNote", { month: t("month." + plan.month) }))}</p>`;
 
+  wireTrackToggle(plan.recommended);
+
   document.querySelectorAll(".alt").forEach((element) => {
     element.onclick = () => {
       const index = +element.dataset.alt;
+      const itinerary = index === -1 ? plan.recommended : plan.alternatives[index];
       drawPlan(plan, index);
+      stopTracking();
+      wireTrackToggle(itinerary);
       document.querySelectorAll(".alt").forEach((el) => el.classList.remove("chosen"));
       element.classList.add("chosen");
     };
@@ -843,6 +1060,7 @@ function renderRoute(plan) {
 /* ----------------------------------------------------------- risk map ---- */
 
 async function drawRisk() {
+  stopTracking();
   setSource("route", []);
   const data = await api(`/network/segments?month=${$("riskMonth").value}`);
   const { segments, risk_model } = data;
@@ -923,6 +1141,7 @@ function rampColour(value, worst, best) {
 }
 
 async function drawAccessibility() {
+  stopTracking();
   setSource("route", []);
   const data = await api(`/accessibility/index?month=${$("accessMonth").value}`);
   const metric = $("accessMetric").value;

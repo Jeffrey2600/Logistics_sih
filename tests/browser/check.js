@@ -339,6 +339,40 @@ const check = (name, ok, detail) => results.push({ name, ok, detail });
         (await p.textContent('nav button[data-tab="route"]')).trim() === 'Plan a shipment',
         await p.textContent('nav button[data-tab="route"]'));
 
+  // 14. Shipment tracking: a marker moves, pauses in place, resumes from the
+  // same spot, and cleans itself up when the tab is left.
+  await p.click('nav button[data-tab="route"]');
+  await idle('#planBtn');
+  await pickPlace('origin', 'KHM');
+  await idle('#planBtn');
+  check('the track panel appears once a route is planned', !!(await p.$('#trackToggle')));
+
+  await p.click('#trackToggle');
+  await p.waitForTimeout(2200);
+  const posRunning = await p.evaluate(() => state.tracking && state.tracking.marker.getLngLat());
+  check('a marker exists once tracking starts', !!posRunning, JSON.stringify(posRunning));
+
+  await p.click('#trackToggle');   // pause
+  const barAtPause = await p.$eval('#trackBar', el => el.style.width);
+  await p.waitForTimeout(1200);
+  const barAfterWait = await p.$eval('#trackBar', el => el.style.width);
+  check('pausing actually freezes progress, not just the label',
+        barAtPause === barAfterWait, `${barAtPause} vs ${barAfterWait}`);
+  check('pause leaves the marker in place rather than removing it',
+        (await p.$$('.tracker-marker')).length === 1);
+
+  await p.click('#trackToggle');   // resume
+  await p.waitForTimeout(1200);
+  const barAfterResume = await p.$eval('#trackBar', el => el.style.width);
+  check('resuming continues forward from the paused point, not from zero',
+        parseFloat(barAfterResume) > parseFloat(barAfterWait),
+        `${barAfterWait} -> ${barAfterResume}`);
+
+  await p.click('nav button[data-tab="risk"]');
+  await p.waitForTimeout(300);
+  check('leaving the route tab removes the tracking marker',
+        (await p.$$('.tracker-marker')).length === 0);
+
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {
     console.log(`${r.ok ? "PASS" : "FAIL"}  ${r.name || r.n}` +

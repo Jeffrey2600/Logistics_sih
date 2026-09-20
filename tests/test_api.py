@@ -174,8 +174,11 @@ def test_the_dashboard_has_no_handlers_for_removed_controls():
     ids = set(re.findall(r'id="([\w-]+)"', html))
     referenced = set(re.findall(r'\$\("([\w-]+)"\)', app_js))
     # Panels are addressed as "tab-" + name at runtime, so they never appear
-    # literally in a $() call.
-    missing = {r for r in referenced - ids if not r.startswith("tab-")}
+    # literally in a $() call. The tracking panel is injected via innerHTML
+    # (trackPanelHTML()) only after a route is planned, for the same reason -
+    # its ids are real once the panel exists, just never in the static file.
+    RUNTIME_INJECTED = {"trackToggle", "trackStatus", "trackBar"}
+    missing = {r for r in referenced - ids - RUNTIME_INJECTED if not r.startswith("tab-")}
     assert not missing, f"app.js refers to elements that do not exist: {sorted(missing)}"
 
 

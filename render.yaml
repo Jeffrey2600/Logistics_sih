@@ -11,3 +11,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
+      # Without this the deployed app silently serves the 46-place seed
+      # network instead of the full 25,360 km one - same failure mode run.sh
+      # was fixed against, just one layer further from anyone noticing.
+      - key: NER_USE_OSM
+        value: "1"
